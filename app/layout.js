@@ -1,1 +1,1 @@
-import "./globals.css"; export const metadata={title:"GBK AI Global Learning",description:"GBK AI multilingual learning and AI Tutor."}; export default function RootLayout({children}){return <html lang="en"><body>{children}</body></html>}
+import "./globals.css";export const metadata={title:"GBK AI Global Learning V5",description:"GBK AI multilingual learning and AI Tutor."};export default function RootLayout({children}){return <html lang="en"><body>{children}</body></html>}
