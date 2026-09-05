@@ -1,5 +1,4 @@
-\"use client\";
-import {useEffect,useRef,useState} from "react";
+"use client";import {useEffect,useRef,useState} from "react";
 
 const languages=["English","తెలుగు","हिन्दी","தமிழ்","ಕನ್ನಡ","മലയാളം","বাংলা","Español","العربية","Français","Deutsch","Português","日本語","한국어","中文"];
 
