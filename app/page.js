@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Header from "./components/Header";
+impor
 
 const languages = [
   "English", "తెలుగు", "हिन्दी", "தமிழ்", "ಕನ್ನಡ", "മലയാളം", "বাংলা",
@@ -24,7 +24,7 @@ const learningPaths = [
 export default function Home() {
   return (
     <main className="page">
-      <Header />
+      
 
       <section className="hero">
         <div className="eyebrow">🤖 GBK AI GLOBAL LEARNING V9</div>
