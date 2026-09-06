@@ -1,19 +1,6 @@
 "use client";
 import Link from "next/link";
 const paths=[
-["Spoken English","Talk naturally in everyday situations."],
-["AI & Technology","Understand AI and practical technology."],
-["Coding","Learn programming step by step."],
-["Digital Marketing","Learn SEO, content and growth."],
-["Business & Careers","Improve interviews and workplace communication."],
-["Finance","Learn money and financial basics."],
-["Creative Skills","Build writing, design and creative thinking."],
-["Education","Learn subjects with simple explanations."],
-["Local Language","Learn useful words, phrases and speaking."]
+["🗣️","Spoken English","Real-life conversation, pronunciation, grammar and confidence."],["🤖","AI & Technology","Understand AI and use useful tools in daily work."],["💻","Coding","Learn programming from simple examples to projects."],["📣","Digital Marketing","SEO, content, social media, ads and growth basics."],["💼","Business & Careers","Workplace communication, interviews and career skills."],["💰","Finance","Saving, budgeting, money habits and financial basics."],["🎨","Creative Skills","Writing, ideas, design thinking and creative practice."],["📚","Education","Simple explanations, questions, quizzes and revision."],["🌍","Local Language","Vocabulary, phrases, reading and everyday speaking."]
 ];
-export default function Paths(){
-  return <main className="page">
-    <section className="hero"><span className="eyebrow">GBK AI • LEARNING PATHS</span><h1>Choose one skill.</h1><p>Start small. Practice often. Improve every day.</p></section>
-    <div className="grid">{paths.map(([name,desc])=><section className="card" key={name}><h2>{name}</h2><p>{desc}</p><Link className="button primary" href="/lesson">Start Lesson 1 →</Link></section>)}</div>
-  </main>
-}
+export default function Paths(){return <main className="page"><div className="top"><Link href="/">← Home</Link><h1>Choose a learning path</h1><p>Start with one small lesson. Learn → Practice → Improve.</p></div><section className="grid">{paths.map(([icon,title,desc])=><div className="card path" key={title}><div className="icon">{icon}</div><h2>{title}</h2><p>{desc}</p><Link className="btn" href={`/lesson?path=${encodeURIComponent(title)}`}>Start Lesson 1 →</Link></div>)}</section></main>}
