@@ -1,20 +1,7 @@
 "use client";
+import {useSearchParams} from "next/navigation";
 import Link from "next/link";
-export default function Lesson(){
-  return <main className="page">
-    <section className="hero">
-      <span className="eyebrow">GBK AI • LESSON 1</span>
-      <h1>Speak with confidence.</h1>
-      <p>Learn one useful sentence, listen, say it, get correction, and repeat.</p>
-    </section>
-    <section className="card">
-      <h2>Introduce yourself</h2>
-      <p><strong>Listen:</strong> “Hello, my name is ___. I am learning English.”</p>
-      <p><strong>Use it:</strong> Say the sentence aloud, then practice with the AI tutor.</p>
-      <div className="actions">
-        <Link className="button primary" href="/#practice">Practice now →</Link>
-        <Link className="button" href="/tutor">Ask AI Tutor</Link>
-      </div>
-    </section>
-  </main>
-}
+import {useState} from "react";
+export const dynamic="force-dynamic";
+const lessons={"Spoken English":["Introduce yourself","Ask a simple question","Continue a conversation","Speak about your day","Practice a real-life situation"],"AI & Technology":["What is AI?","Ask AI a useful question","Use AI for learning","Build a simple workflow","Review what you learned"],"Coding":["Variables","Conditions","Functions","Build a small program","Mini project"],"Digital Marketing":["SEO basics","Create useful content","Social media basics","Measure growth","Mini campaign"],"Business & Careers":["Introduce yourself","Workplace communication","Interview practice","Write a professional message","Career action plan"],"Finance":["Saving basics","Budgeting","Money goals","Smart spending","Review your plan"],"Creative Skills":["Generate ideas","Write clearly","Improve your work","Creative problem solving","Mini project"],"Education":["Learn a topic","Practice questions","Explain in your own words","Quick quiz","Review and remember"],"Local Language":["Useful words","Everyday phrases","Reading basics","Short conversation","Review and repeat"]};
+export default function Lesson(){const q=useSearchParams();const path=q.get("path")||"Spoken English";const list=lessons[path]||lessons["Spoken English"];const [i,setI]=useState(0);return <main className="page"><div className="top"><Link href="/paths">← Learning Paths</Link><span className="badge small">{path}</span><h1>Lesson {i+1}: {list[i]}</h1><p>Listen → understand → practice → get correction → repeat.</p></div><section className="card lesson"><div className="lessonbox"><b>LEARN</b><h2>{list[i]}</h2><p>Start with the example, then say or type your own answer. GBK AI will help you improve.</p><div className="example"><b>Example</b><p>{path==="Spoken English"?"Hello, my name is Alex. Nice to meet you.":"Explain this idea in simple words."}</p></div></div><div className="actions"><Link className="btn primary" href={`/practice?path=${encodeURIComponent(path)}&lesson=${i+1}`}>Practice this lesson →</Link>{i<list.length-1&&<button className="btn" onClick={()=>setI(i+1)}>Next lesson</button>}</div></section><div className="steps"><span className="active">Learn</span><span>Practice</span><span>Correction</span><span>Repeat</span><span>Progress</span></div></main>}
