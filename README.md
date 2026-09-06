@@ -1,5 +1,7 @@
-# GBK AI Global Learning V10
+# GBK AI Global Learning V11
 
-Fixes: single shared header, persistent language selection across all routes, language-change synchronization, 15-language selector, multilingual UI labels, language-aware speech recognition and speech output, expanded learning paths, and hardened App Router API structure.
+Global multilingual learning foundation with 25 interface languages, real-world skill paths, AI tutor, speech recognition, browser speech playback at normal speed (rate 1.0), correction, practice and progress.
 
-Deploy the contents of this folder at the repository root.
+Core routes: `/`, `/paths`, `/lesson`, `/practice`, `/tutor`, `/progress`, `/api/health`, `/api/tutor`.
+
+Voice availability depends on the browser/device. Production AI can be enabled with `AI_PROVIDER_API_KEY` and `AI_PROVIDER_URL`.
