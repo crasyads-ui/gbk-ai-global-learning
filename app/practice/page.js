@@ -1,23 +1,11 @@
 "use client";
-import {useState} from "react";
-export default function Practice(){
-  const [text,setText]=useState("");
-  const [result,setResult]=useState("");
-  async function check(){
-    if(!text.trim()) return;
-    try{
-      const r=await fetch("/api/tutor",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:text,language:"English",goal:"Spoken English"})});
-      const d=await r.json();
-      setResult(d.explanation ? `${d.corrected||d.reply}\n\n${d.explanation}` : d.reply||"Keep practicing.");
-    }catch{setResult("Please try again.")}
-  }
-  return <main className="page">
-    <section className="hero"><span className="eyebrow">GBK AI • PRACTICE</span><h1>Speak. Correct. Repeat.</h1><p>Type what you would say to another person, then ask the AI to help.</p></section>
-    <section className="card">
-      <h2>Try this</h2><p>Hello, how are you? I am fine. Thank you.</p>
-      <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Type your sentence here..." rows={5}/>
-      <button className="button primary" onClick={check}>Ask AI →</button>
-      {result && <div className="result"><strong>GBK AI:</strong><br/>{result}</div>}
-    </section>
-  </main>
-}
+import {useSearchParams} from "next/navigation";
+import Link from "next/link";
+import {useEffect,useState} from "react";
+export const dynamic="force-dynamic";
+const langCodes={English:"en-US", "తెలుగు":"te-IN", "हिन्दी":"hi-IN", "தமிழ்":"ta-IN", "ಕನ್ನಡ":"kn-IN", "മലയാളം":"ml-IN", "বাংলা":"bn-IN", Español:"es-ES", "العربية":"ar-SA", Français:"fr-FR", Deutsch:"de-DE", Português:"pt-PT", 日本語:"ja-JP", 한국어:"ko-KR", 中文:"zh-CN"};
+export default function Practice(){const q=useSearchParams();const path=q.get("path")||"Spoken English";const lesson=q.get("lesson")||"1";const [lang,setLang]=useState("English");const [text,setText]=useState("");const [answer,setAnswer]=useState(null);const [busy,setBusy]=useState(false);const [listening,setListening]=useState(false);useEffect(()=>setLang(localStorage.getItem("gbk_language")||"English"),[]);
+ function speak(t){if(typeof window!=="undefined"&&"speechSynthesis"in window){speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(t))}}
+ function startVoice(){const SR=typeof window!=="undefined"&&(window.SpeechRecognition||window.webkitSpeechRecognition);if(!SR){alert("Voice input is not supported in this browser. You can type your answer.");return}const r=new SR();r.lang=langCodes[lang]||"en-US";r.interimResults=false;r.onstart=()=>setListening(true);r.onend=()=>setListening(false);r.onerror=()=>setListening(false);r.onresult=e=>setText(e.results[0][0].transcript);r.start()}
+ async function ask(){if(!text.trim())return;setBusy(true);try{const r=await fetch("/api/tutor",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:text,language:lang,goal:path,lesson})});const d=await r.json();setAnswer(d)}catch{setAnswer({corrected:text,explanation:"Try again slowly. GBK AI could not reach the tutor service this time.",reply:"Good effort."})}finally{setBusy(false)}}
+ return <main className="page"><div className="top"><Link href={`/lesson?path=${encodeURIComponent(path)}`}>← Lesson {lesson}</Link><span className="badge small">PRACTICE · {lang}</span><h1>Try it yourself</h1><p><b>{path}</b> · Lesson {lesson}</p></div><section className="card"><div className="lessonbox"><b>YOUR TURN</b><h2>Speak or type your answer.</h2><p>Make mistakes freely. GBK AI helps you correct, understand and repeat.</p><div className="actions"><button className="btn" onClick={()=>speak(path==="Spoken English"?"Hello, my name is Alex. Nice to meet you.":"Explain this idea in simple words.")}>🔊 Listen to example</button><button className="btn" onClick={startVoice}>{listening?"🎙️ Listening...":"🎙️ Speak to GBK AI"}</button></div></div><textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Type what you would say..." rows="5"/><div className="actions"><button className="btn primary" onClick={ask} disabled={busy}>{busy?"Checking...":"✨ Ask AI"}</button></div>{answer&&<div className="result"><h2>✅ Correction & explanation</h2><p><b>Better:</b> {answer.corrected||answer.reply}</p><p><b>Why:</b> {answer.explanation||"Practice the corrected answer again."}</p><div className="actions"><button className="btn" onClick={()=>speak(answer.corrected||answer.reply)}>🔊 Listen again</button><Link className="btn" href="/progress">See Progress →</Link></div></div>}</section></main>}
