@@ -1,158 +1,49 @@
-"use client";import {useEffect,useRef,useState} from "react";
+"use client";
+import {useEffect,useRef,useState} from "react";
 
 const languages=["English","తెలుగు","हिन्दी","தமிழ்","ಕನ್ನಡ","മലയാളം","বাংলা","Español","العربية","Français","Deutsch","Português","日本語","한국어","中文"];
-
-const goals=[
-["Spoken English","Listen, speak, correct and repeat with voice practice."],
-["AI & Technology","Learn AI concepts, tools and practical technology skills."],
-["Coding","Learn programming through explanations, examples and practice."],
-["Digital Marketing","Practice SEO, content, social media and growth skills."],
-["Business & Careers","Build communication, interview and workplace skills."],
-["Finance","Learn financial concepts, budgeting and market fundamentals."],
-["Creative Skills","Practice writing, design, ideas and creative problem solving."],
-["Education","Learn subjects with simple explanations, examples and quizzes."],
-["Local Language","Learn vocabulary, phrases, reading and speaking in your language."]
-];
-
-const steps=["Listen","Learn","Practice","Correction","Explain","Repeat","Progress"];
-
-const greetings={
-English:"Hello! Welcome to GBK AI Global Learning.",
-"తెలుగు":"నమస్కారం! GBK AI Global Learning కు స్వాగతం.",
-"हिन्दी":"नमस्कार! GBK AI Global Learning में आपका स्वागत है।",
-தமிழ்:"வணக்கம்! GBK AI Global Learning-க்கு வரவேற்கிறோம்.",
-ಕನ್ನಡ:"ನಮಸ್ಕಾರ! GBK AI Global Learning ಗೆ ಸ್ವಾಗತ.",
-മലയാളം:"നമസ്കാരം! GBK AI Global Learning-ലേക്ക് സ്വാഗതം.",
-বাংলা:"নমস্কার! GBK AI Global Learning-এ স্বাগতম.",
-Español:"¡Hola! Bienvenido a GBK AI Global Learning.",
-العربية:"مرحباً! أهلاً بك في GBK AI Global Learning.",
-Français:"Bonjour ! Bienvenue sur GBK AI Global Learning.",
-Deutsch:"Hallo! Willkommen bei GBK AI Global Learning.",
-Português:"Olá! Bem-vindo ao GBK AI Global Learning.",
-日本語:"こんにちは！GBK AI Global Learningへようこそ。",
-한국어:"안녕하세요! GBK AI Global Learning에 오신 것을 환영합니다.",
-中文:"你好！欢迎来到 GBK AI Global Learning。"
+const paths={
+"Spoken English":[["Introduce yourself","Learn a simple self-introduction.","Hello, my name is ___. I am from ___. I am learning English."],["Everyday questions","Practice useful daily questions.","How are you? Where are you from? What do you do?"],["Grammar correction","Fix common English mistakes.","I agree. I have gone. He goes to work."]],
+"AI & Technology":[["What is AI?","Understand artificial intelligence simply.","AI is technology that learns patterns from examples and helps with tasks."],["How AI learns","Understand data and patterns.","AI learns patterns from examples and uses them to make predictions."],["Use AI well","Practice responsible AI use.","Use AI to explain, brainstorm and practice, then verify important information."]],
+"Coding":[["Variables","Learn how programs store values.","let name = \"GBK\";"],["Conditions","Learn how programs make decisions.","if (age >= 18) { console.log(\"Adult\"); }"],["Functions","Learn reusable code blocks.","function greet(name) { return \"Hello \" + name; }"]],
+"Digital Marketing":[["Target audience","Understand who needs your product.","A target audience is the group most likely to need a product."],["Useful content","Create content that solves a real problem.","Create content that answers a real customer question."],["Call to action","Guide visitors to the next step.","A clear call to action tells visitors what to do next."]],
+"Business & Careers":[["Professional introduction","Build a short work introduction.","Hello, I am ___. I work in ___. My strengths are ___."],["Interview answers","Use Situation → Action → Result.","Situation → Action → Result is a simple way to explain experience."],["Workplace communication","Make messages clear and actionable.","State the purpose, key details and next action."]],
+"Finance":[["Saving","Understand why saving matters.","Saving creates a reserve for future needs and unexpected expenses."],["Budgeting","Plan income, needs, wants and savings.","A budget helps you plan where money should go before spending."],["Risk and return","Understand basic investment risk.","Higher potential returns usually come with higher uncertainty or risk."]],
+"Creative Skills":[["Idea generation","Create several useful ideas.","Ask what problem you can solve, who has it and what could make it easier."],["Clear writing","Make ideas easy to understand.","Use short sentences, specific words and a clear structure."],["Problem solving","Break big problems into smaller parts.","Define the problem, list options, choose one and test it."]],
+"Education":[["Learn a topic","Use learn → practice → check.","Learn the idea, explain it in your own words, then test yourself."],["Active recall","Practice remembering from memory.","Close your notes and explain the main idea without looking."],["Mini quiz","Check real understanding.","A good quiz tests the key ideas, not only memorized wording."]],
+"Local Language":[["Everyday phrase","Start with a useful phrase.","Hello. Thank you. Please. How are you?"],["Useful vocabulary","Build daily vocabulary.","Learn words for people, places, food, time and common actions."],["Short conversation","Combine words in a simple exchange.","Hello. How are you? I am fine. Thank you."]]
 };
-
-function starter(g){
-return {
-"Spoken English":"Say: Hello, my name is ___ and I am learning English.",
-"AI & Technology":"Explain artificial intelligence in one simple sentence.",
-"Coding":"Write one simple example of a variable in your favorite programming language.",
-"Digital Marketing":"Give one simple idea to promote a new online product.",
-"Business & Careers":"Give one strong sentence for introducing yourself in a job interview.",
-"Finance":"Explain why saving money is important in one simple sentence.",
-"Creative Skills":"Write one creative idea for a useful mobile app.",
-"Education":"Explain one topic you know well in three simple sentences.",
-"Local Language":"Write one useful everyday phrase you want to learn."
-}[g]||"Ask GBK AI Tutor to teach you something useful."
-}
+const steps=["Listen","Learn","Practice","Correction","Explain","Repeat","Progress"];
+const greetings={English:"Hello! Welcome to GBK AI Global Learning.","తెలుగు":"నమస్కారం! GBK AI Global Learning కు స్వాగతం.","हिन्दी":"नमस्कार! GBK AI Global Learning में आपका स्वागत है।",Español:"¡Hola! Bienvenido a GBK AI Global Learning.",العربية:"مرحباً! أهلاً بك في GBK AI Global Learning."};
 
 export default function Home(){
-const[lang,setLang]=useState("English"),[goal,setGoal]=useState("Spoken English"),[step,setStep]=useState(0),[input,setInput]=useState(""),[answer,setAnswer]=useState(null),[busy,setBusy]=useState(false),[listening,setListening]=useState(false),[progress,setProgress]=useState(0);
-const rec=useRef(null);
-const practiceRef=useRef(null);
+const[lang,setLang]=useState("English"),[goal,setGoal]=useState("Spoken English"),[lesson,setLesson]=useState(0),[step,setStep]=useState(0),[input,setInput]=useState(""),[answer,setAnswer]=useState(null),[busy,setBusy]=useState(false),[progress,setProgress]=useState(0);
+const[listening,setListening]=useState(false),rec=useRef(null),practiceRef=useRef(null);
+const current=paths[goal][lesson];
 
-useEffect(()=>{
-setProgress(Number(localStorage.getItem("gbk_progress")||0));
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-if(SR){
-const r=new SR();
-r.lang="en-US";
-r.interimResults=false;
-r.maxAlternatives=1;
-r.onresult=e=>setInput(e.results[0][0].transcript);
-r.onend=()=>setListening(false);
-rec.current=r;
-}
-},[]);
-
-function goToPractice(){
-requestAnimationFrame(()=>{
-practiceRef.current?.scrollIntoView({behavior:"smooth",block:"start"});
-});
-}
-
-function speak(t){
-if("speechSynthesis"in window){
-speechSynthesis.cancel();
-speechSynthesis.speak(new SpeechSynthesisUtterance(t));
-}
-}
-
-function listen(){
-const p=starter(goal);
-setInput(p);
-speak(p);
-setStep(goal==="Spoken English"?0:1);
-goToPractice();
-}
-
-function voice(){
-if(!rec.current)return alert("Voice input is not supported in this browser.");
-if(listening)rec.current.stop();
-else{rec.current.start();setListening(true)}
-}
-
-async function submit(){
-if(!input.trim()||busy)return;
-setBusy(true);
-try{
-const r=await fetch("/api/tutor",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:input,language:lang,goal,mode:goal==="Spoken English"?"spoken-english":"learning"})});
-const d=await r.json();
-setAnswer(d);
-setStep(3);
-if(d.corrected)speak(d.corrected);
-else if(d.reply)speak(d.reply);
-const n=Math.min(100,progress+10);
-setProgress(n);
-localStorage.setItem("gbk_progress",n);
-}finally{setBusy(false)}
-}
-
-function selectGoal(g){
-setGoal(g);
-setAnswer(null);
-setInput("");
-setStep(g==="Spoken English"?0:1);
-if(typeof window!=="undefined")window.location.hash="practice";
-goToPractice();
-}
+useEffect(()=>{setProgress(Number(localStorage.getItem("gbk_progress")||0));const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(SR){const r=new SR();r.lang="en-US";r.interimResults=false;r.maxAlternatives=1;r.onresult=e=>setInput(e.results[0][0].transcript);r.onend=()=>setListening(false);rec.current=r}},[]);
+function go(){requestAnimationFrame(()=>practiceRef.current?.scrollIntoView({behavior:"smooth",block:"start"}))}
+function speak(t){if("speechSynthesis"in window){speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(t))}}
+function start(){setStep(0);setAnswer(null);setInput("");speak(current[1]+" "+current[2]);go()}
+function practice(){setStep(2);setInput(current[2]);setAnswer(null);go()}
+function voice(){if(!rec.current)return alert("Voice input is not supported in this browser.");if(listening)rec.current.stop();else{rec.current.start();setListening(true)}}
+async function submit(){if(!input.trim()||busy)return;setBusy(true);try{const r=await fetch("/api/tutor",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:input,language:lang,goal,lesson:current[0],mode:goal==="Spoken English"?"spoken-english":"learning"})});const d=await r.json();setAnswer(d);setStep(3);if(d.corrected)speak(d.corrected);else if(d.reply)speak(d.reply);const n=Math.min(100,progress+10);setProgress(n);localStorage.setItem("gbk_progress",n)}catch{setAnswer({label:"GBK AI Tutor",reply:"Please try again."})}finally{setBusy(false)}}
+function choose(g){setGoal(g);setLesson(0);setStep(0);setAnswer(null);setInput("");if(typeof window!=="undefined")window.location.hash="practice";go()}
+function next(){if(lesson<paths[goal].length-1){setLesson(lesson+1);setStep(0);setAnswer(null);setInput("");setTimeout(go,50)}else{setStep(6);const n=Math.min(100,progress+20);setProgress(n);localStorage.setItem("gbk_progress",n)}}
 
 return <main>
-<header>
-<div className="brand"><span className="logo">G</span><div><b>GBK AI</b><small>GLOBAL LEARNING</small></div></div>
-<nav><a href="#practice">Practice</a><a href="#paths">Learning</a><a href="#progress">Progress</a></nav>
-<select value={lang} onChange={e=>setLang(e.target.value)}>{languages.map(x=><option key={x}>{x}</option>)}</select>
-<button className="signin">Sign in</button>
-</header>
+<header><div className="brand"><span className="logo">G</span><div><b>GBK AI</b><small>GLOBAL LEARNING</small></div></div><nav><a href="#practice">Practice</a><a href="#paths">Learning</a><a href="#progress">Progress</a></nav><select value={lang} onChange={e=>setLang(e.target.value)}>{languages.map(x=><option key={x}>{x}</option>)}</select><button className="signin">Sign in</button></header>
 
-<section className="hero">
-<div><div className="pill">🤖 GBK AI GLOBAL LEARNING V5</div>
-<h1>Learn in <span>your language.</span><br/>Build real skills.</h1>
-<p>{greetings[lang]} Choose a learning path and practice with an AI tutor.</p>
-<div className="buttons"><a className="primary" href="#paths">Start learning →</a><a className="secondary" href="#practice">Open AI Tutor</a></div></div>
-<div className="mini"><b>Multilingual AI learning</b><span>✓ Learn in your language</span><span>✓ Ask and practice</span><span>✓ AI explanation + correction</span><span>✓ Repeat → recheck → progress</span></div>
-</section>
+<section className="hero"><div><div className="pill">🤖 GBK AI GLOBAL LEARNING V6</div><h1>Learn in <span>your language.</span><br/>Build real skills.</h1><p>{greetings[lang]||greetings.English} Choose a path, follow a real lesson, practice with AI and track progress.</p><div className="buttons"><a className="primary" href="#paths">Start learning →</a><a className="secondary" href="#practice">Open AI Tutor</a></div></div><div className="mini"><b>Simple learning loop</b><span>✓ One small lesson at a time</span><span>✓ Listen + practice</span><span>✓ AI correction + explanation</span><span>✓ Repeat → next lesson → progress</span></div></section>
 
-<section className="practice" id="practice" ref={practiceRef}>
-<div className="eyebrow">AI LEARNING LAB</div>
-<div className="steps">{steps.map((x,i)=><button key={x} className={step===i?"active":""} onClick={()=>setStep(i)}><i>{i+1}</i>{x}</button>)}</div>
-<div className="practiceGrid">
-<div className="coach"><span className="tag">{goal}</span><h2>{goal==="Spoken English"?"Listen → Speak → Improve":"Learn → Practice → Improve"}</h2><p className="muted">{goals.find(x=>x[0]===goal)?.[1]}</p>
-<div className="prompt"><small>{goal==="Spoken English"?"SPEAKING PRACTICE":"LEARNING PRACTICE"}</small><strong>{starter(goal)}</strong><button onClick={listen}>🔊 Listen / Start</button></div></div>
-<div className="chatbox"><div className="languageNote">Tutor language: <b>{lang}</b></div>
-{answer?<><div className="result"><span>Your input</span><p>{input}</p></div>{answer.corrected&&<div className="result good"><span>Improved English</span><p>{answer.corrected}</p></div>}<div className="explain"><b>{answer.label||"GBK AI Tutor"}</b><p>{answer.explanation||answer.reply}</p></div></>:<div className="bubble">{greetings[lang]} Choose a path, then use Listen / Start or type your question.</div>}
-<div className="composer"><input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={goal==="Spoken English"?"Speak or type your English sentence...":"Ask or type your learning task..."}/><button onClick={voice}>{listening?"■":"🎤"}</button><button className="send" onClick={submit} disabled={busy}>{busy?"…":"Ask AI"}</button></div>
-{answer&&<button className="recheck" onClick={()=>{setAnswer(null);setInput(starter(goal));setStep(4);goToPractice()}}>↻ Practice again</button>}
-<small>Voice input/output uses browser speech APIs. AI provider can be connected securely with deployment environment variables.</small>
-</div></div></section>
+<section className="practice" id="practice" ref={practiceRef}><div className="eyebrow">AI LEARNING LAB · V6</div><div className="steps">{steps.map((x,i)=><button key={x} className={step===i?"active":""} onClick={()=>setStep(i)}><i>{i+1}</i>{x}</button>)}</div>
+<div className="practiceGrid"><div className="coach"><span className="tag">{goal} · Lesson {lesson+1}/{paths[goal].length}</span><h2>{current[0]}</h2><p className="muted">{current[1]}</p><div className="prompt"><small>LESSON {lesson+1} · {steps[step]}</small><strong>{current[2]}</strong><button onClick={start}>🔊 Listen / Start</button></div><div className="buttons" style={{marginTop:12}}><button className="secondary" onClick={practice}>✍️ Practice lesson</button>{lesson<paths[goal].length-1&&<button className="primary" onClick={next}>Next lesson →</button>}</div></div>
+<div className="chatbox"><div className="languageNote">Tutor language: <b>{lang}</b></div><div className="bubble"><b>Learn:</b> {current[1]}<br/><br/><b>Try:</b> {current[2]}</div>{answer&&<><div className="result"><span>Your practice</span><p>{input}</p></div>{answer.corrected&&<div className="result good"><span>Improved</span><p>{answer.corrected}</p></div>}<div className="explain"><b>{answer.label||"GBK AI Tutor"}</b><p>{answer.explanation||answer.reply}</p></div></>}<div className="composer"><input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder="Type your answer or practice sentence..."/><button onClick={voice}>{listening?"■":"🎤"}</button><button className="send" onClick={submit} disabled={busy}>{busy?"…":"Ask AI"}</button></div>{answer&&<button className="recheck" onClick={practice}>↻ Repeat practice</button>}<small>V6 provides structured lessons, voice practice, AI correction, explanation and repeat practice.</small></div></div></section>
 
-<section id="progress" className="progress"><div><div className="eyebrow">YOUR PROGRESS</div><h2>Small practice. Real improvement.</h2><p className="muted">Your browser stores a simple practice score on this device.</p></div><div className="meter"><strong>{progress}%</strong><div><span style={{width:`${progress}%`}}/></div><small>Practice progress</small></div></section>
+<section id="progress" className="progress"><div><div className="eyebrow">YOUR PROGRESS</div><h2>Small lessons. Real improvement.</h2><p className="muted">Progress is saved on this device.</p></div><div className="meter"><strong>{progress}%</strong><div><span style={{width:`${progress}%`}}/></div><small>Practice progress</small></div></section>
 
-<section id="paths" className="paths"><div className="eyebrow">LEARNING PATHS</div><h2>Every path is now interactive.</h2><div className="grid">{goals.map(([x,d])=><article key={x}><h3>{x}</h3><p>{d}</p><button onClick={()=>selectGoal(x)}>Start path →</button></article>)}</div></section>
-
-<section className="cta"><h2>GBK AI — global skills, one learning platform.</h2><p>Multilingual learning, voice practice, AI tutoring and measurable progress — built as the foundation for a global learning ecosystem.</p></section>
-<footer><b>GBK AI</b><span>Global Learning & Skills</span><span>V5 interactive learning paths</span></footer>
+<section id="paths" className="paths"><div className="eyebrow">LEARNING PATHS · V6</div><h2>Choose a path and start Lesson 1.</h2><div className="grid">{Object.keys(paths).map(x=><article key={x}><h3>{x}</h3><p>{paths[x][0][0]} · {paths[x].length} starter lessons.</p><button onClick={()=>choose(x)}>Start Lesson 1 →</button></article>)}</div></section>
+<section className="cta"><h2>GBK AI — global skills, one learning platform.</h2><p>Multilingual lessons, voice practice, AI tutoring, correction, repetition and measurable progress.</p></section>
+<footer><b>GBK AI</b><span>Global Learning & Skills</span><span>V6 structured lessons</span></footer>
 </main>
 }
