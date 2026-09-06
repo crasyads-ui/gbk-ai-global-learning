@@ -1,25 +1,9 @@
 "use client";
-import {useState} from "react";
-export default function Tutor(){
-  const [input,setInput]=useState("");
-  const [reply,setReply]=useState("");
-  const [busy,setBusy]=useState(false);
-  async function ask(){
-    if(!input.trim()||busy)return;
-    setBusy(true);
-    try{
-      const r=await fetch("/api/tutor",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:input,language:"English",goal:"Spoken English"})});
-      const d=await r.json();
-      setReply(d.reply||d.corrected||"Let's practice together.");
-    }catch{setReply("Tutor request could not be processed.");}
-    finally{setBusy(false)}
-  }
-  return <main className="page">
-    <section className="hero"><span className="eyebrow">GBK AI • AI TUTOR</span><h1>Ask. Learn. Practice.</h1><p>Ask a question, write a sentence, or describe a real conversation you want to practice.</p></section>
-    <section className="card">
-      <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder="Example: How do I introduce myself at work?" rows={6}/>
-      <button className="button primary" onClick={ask}>{busy?"Thinking…":"Ask AI →"}</button>
-      {reply && <div className="result">{reply}</div>}
-    </section>
-  </main>
-}
+import {useEffect,useState} from "react";
+import Link from "next/link";
+const codes={English:"en-US", "తెలుగు":"te-IN", "हिन्दी":"hi-IN", "தமிழ்":"ta-IN", "ಕನ್ನಡ":"kn-IN", "മലയാളം":"ml-IN", "বাংলা":"bn-IN", Español:"es-ES", "العربية":"ar-SA", Français:"fr-FR", Deutsch:"de-DE", Português:"pt-PT", 日本語:"ja-JP", 한국어:"ko-KR", 中文:"zh-CN"};
+export default function Tutor(){const [lang,setLang]=useState("English");const [q,setQ]=useState("");const [a,setA]=useState(null);const [busy,setBusy]=useState(false);const [listening,setListening]=useState(false);useEffect(()=>setLang(localStorage.getItem("gbk_language")||"English"),[]);
+ function speak(t){if("speechSynthesis"in window){speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(t))}}
+ function voice(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){alert("Voice input is not supported in this browser. Please type your question.");return}const r=new SR();r.lang=codes[lang]||"en-US";r.onstart=()=>setListening(true);r.onend=()=>setListening(false);r.onerror=()=>setListening(false);r.onresult=e=>setQ(e.results[0][0].transcript);r.start()}
+ async function ask(){if(!q.trim())return;setBusy(true);try{const r=await fetch("/api/tutor",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:q,language:lang,goal:"AI Tutor"})});const d=await r.json();setA(d)}catch{setA({reply:"Please try again.",explanation:"The tutor service could not be reached."})}finally{setBusy(false)}}
+ return <main className="page"><div className="top"><Link href="/">← Home</Link><h1>🤖 Ask GBK AI Tutor</h1><p>Ask questions aloud or type them. Learn in your selected language.</p></div><section className="card"><div className="actions"><button className="btn" onClick={voice}>{listening?"🎙️ Listening...":"🎙️ Ask aloud"}</button><button className="btn" onClick={()=>speak("Hello. Ask me a question and I will help you learn.")}>🔊 Hear instructions</button></div><textarea value={q} onChange={e=>setQ(e.target.value)} placeholder="Example: How can I speak English confidently?" rows="6"/><button className="btn primary" onClick={ask} disabled={busy}>{busy?"Thinking...":"Ask AI →"}</button>{a&&<div className="result"><h2>GBK AI</h2><p>{a.reply||a.corrected}</p>{a.explanation&&<p><b>Explanation:</b> {a.explanation}</p>}<button className="btn" onClick={()=>speak(a.reply||a.corrected)}>🔊 Listen</button></div>}</section></main>}
