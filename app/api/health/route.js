@@ -1,1 +1,1 @@
-export async function GET(){return Response.json({ok:true,service:"gbk-ai-global-learning",version:"8.0.0",multiPage:true,learningPaths:true,practice:true,tutorApi:true,productionAIConfigured:Boolean(process.env.AI_PROVIDER_API_KEY)})}
+export async function GET(){return Response.json({ok:true,service:"gbk-ai-global-learning",version:"9.0.0",tutorApi:true,spokenEnglishFlow:true,voiceInput:true,multilingualUI:true,learningPaths:true,productionAIConfigured:Boolean(process.env.AI_PROVIDER_API_KEY)})}
