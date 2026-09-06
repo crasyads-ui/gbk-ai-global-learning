@@ -1,16 +1,23 @@
 "use client";
 import Link from "next/link";
+import {useEffect,useState} from "react";
+
+const languages=["English","తెలుగు","हिन्दी","தமிழ்","ಕನ್ನಡ","മലയാളം","বাংলা","Español","العربية","Français","Deutsch","Português","日本語","한국어","中文"];
+const greeting={English:"Hello!", "తెలుగు":"నమస్కారం!", "हिन्दी":"नमस्कार!", "தமிழ்":"வணக்கம்!", "ಕನ್ನಡ":"ನಮಸ್ಕಾರ!", "മലയാളം":"നമസ്കാരം!", "বাংলা":"নমস্কার!", Español:"¡Hola!", "العربية":"مرحبًا!", Français:"Bonjour!", Deutsch:"Hallo!", Português:"Olá!", 日本語:"こんにちは!", 한국어:"안녕하세요!", 中文:"你好!"};
+
 export default function Home(){
-  return <main className="page"><section className="hero">
-    <span className="badge">🤖 GBK AI GLOBAL LEARNING V8</span>
-    <h1>Learn simply.<br/><span>Practice every day.</span></h1>
-    <p>Choose a skill, learn one small lesson, practice with AI, and improve step by step.</p>
-    <div className="actions"><Link className="btn primary" href="/paths">Start Learning →</Link><Link className="btn" href="/tutor">Ask AI Tutor</Link></div>
+ const [lang,setLang]=useState("English");
+ useEffect(()=>setLang(localStorage.getItem("gbk_language")||"English"),[]);
+ function changeLang(v){setLang(v);localStorage.setItem("gbk_language",v)}
+ return <main className="page">
+  <header className="siteHeader"><div><div className="brand"><span className="logo">G</span><span><b>GBK AI</b><small>GLOBAL LEARNING</small></span></div></div><select aria-label="Learning language" value={lang} onChange={e=>changeLang(e.target.value)}>{languages.map(x=><option key={x}>{x}</option>)}</select></header>
+  <section className="hero">
+   <div className="eyebrow">🌍 ONE GLOBAL LEARNING PLATFORM</div>
+   <h1>Learn in <span>your language.</span><br/>Build skills for the world.</h1>
+   <p>{greeting[lang]} Learn languages, spoken English, AI, coding, digital marketing, business and careers — together with your personal GBK AI teacher.</p>
+   <div className="actions"><Link className="btn primary" href="/paths">Start Learning →</Link><Link className="btn" href="/paths">Explore Skills</Link></div>
   </section>
-  <section className="grid three">
-    <div className="card"><b>1. Learn</b><p>Short lessons made for beginners.</p></div>
-    <div className="card"><b>2. Practice</b><p>Speak, write or answer a simple task.</p></div>
-    <div className="card"><b>3. Improve</b><p>AI gives correction, explanation and a next step.</p></div>
-  </section>
-  <section className="card"><h2>🌍 Learn in your language</h2><p>Use your preferred language while learning English, AI, Coding, Digital Marketing and other useful skills.</p><Link className="textlink" href="/paths">Explore learning paths →</Link></section>
-</main>}
+  <section className="grid three"><div className="card mini"><b>🌐 Global languages</b><p>Choose your learning language.</p></div><div className="card mini"><b>🎙️ Voice learning</b><p>Listen, speak and repeat.</p></div><div className="card mini"><b>🤖 AI teacher</b><p>Ask, correct and improve.</p></div></section>
+  <section className="card"><h2>How GBK AI helps</h2><div className="grid three"><div><b>1. Learn</b><p>Short, simple lessons.</p></div><div><b>2. Practice</b><p>Speak or type your answer.</p></div><div><b>3. Improve</b><p>Get correction, explanation and repeat practice.</p></div></div></section>
+ </main>
+}
