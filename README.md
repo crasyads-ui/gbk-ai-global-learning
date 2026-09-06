@@ -1,26 +1,17 @@
-# GBK AI Global Learning V4
+# GBK AI Global Learning V9
 
-Flagship multilingual Spoken English practice for `learn.gbkai.com`.
+V9 fixes and expands the global learning frontend while keeping the professional navy/purple visual direction.
 
-## Core experience
+## Included
+- 15-language selector on the home page with saved language preference.
+- Multilingual greeting and language passed into tutor requests.
+- Spoken English flow: listen -> speak/type -> AI correction -> explanation -> repeat.
+- Browser voice input with language-specific recognition codes where supported.
+- Text-to-speech example and correction playback.
+- 9 learning paths with expanded lesson sequences.
+- AI Tutor page with voice + text questions.
+- Progress page and learning navigation.
+- Correct Next.js App Router API paths under `app/api/*`.
+- Health endpoint version 9.0.0.
 
-Own language → Listen → Speak English → AI correction → correction explained in own language → Repeat → Recheck → Progress.
-
-## V4 features
-
-- Multilingual Spoken English practice
-- Browser microphone speaking
-- English pronunciation/speaking flow
-- Grammar correction
-- Explanation in learner's selected language
-- Repeat and recheck
-- Local learning progress
-- AI Tutor API
-- Local fallback when production AI is not configured
-- Mobile-responsive learning interface
-
-## AI provider
-
-Set `AI_PROVIDER_URL` and `AI_PROVIDER_API_KEY` in the deployment environment.
-
-Never expose provider secrets in client-side code.
+Production AI remains optional: configure `AI_PROVIDER_API_KEY` and `AI_PROVIDER_URL` in Vercel to use the external AI provider. Without those variables, the built-in fallback tutor remains available.
