@@ -8,8 +8,9 @@ export default function VoiceCoach({
   onResult,
 }) {
   const [listening, setListening] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [heard, setHeard] = useState("");
-  const [answer, setAnswer] = useState("");
+  const [answer, setAnswer] = useState(null);
   const recognitionRef = useRef(null);
 
   const speak = (text) => {
@@ -24,6 +25,72 @@ export default function VoiceCoach({
     utterance.volume = 1;
 
     window.speechSynthesis.speak(utterance);
+  };
+
+  const askGBK = async (text) => {
+    const value = String(text || "").trim();
+
+    if (!value) return;
+
+    setBusy(true);
+    setAnswer(null);
+
+    try {
+      if (onResult) {
+        const result = await onResult(value, targetLanguage);
+
+        setAnswer(result);
+
+        const voiceText =
+          typeof result === "string"
+            ? result
+            : result?.reply ||
+              result?.corrected ||
+              "";
+
+        if (voiceText) speak(voiceText);
+
+        return;
+      }
+
+      const response = await fetch("/api/tutor", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: value,
+          language: targetLanguage,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Tutor request failed");
+      }
+
+      setAnswer(data);
+
+      const voiceText =
+        data.reply ||
+        data.corrected ||
+        data.translation ||
+        "";
+
+      if (voiceText) {
+        speak(voiceText);
+      }
+    } catch (error) {
+      console.error("GBK AI tutor error:", error);
+
+      setAnswer({
+        reply: "I could not process that right now. Please try again.",
+        mode: "local",
+      });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const startListening = () => {
@@ -53,7 +120,7 @@ export default function VoiceCoach({
 
     recognition.onstart = () => {
       setListening(true);
-      setAnswer("");
+      setAnswer(null);
     };
 
     recognition.onresult = async (event) => {
@@ -61,37 +128,18 @@ export default function VoiceCoach({
         event.results?.[0]?.[0]?.transcript?.trim() || "";
 
       setHeard(text);
+      setListening(false);
 
-      if (onResult) {
-        try {
-          const result = await onResult(text, targetLanguage);
-
-          if (result) {
-            const response =
-              typeof result === "string"
-                ? result
-                : result.reply ||
-                  result.corrected ||
-                  result.answer ||
-                  "";
-
-            setAnswer(response);
-
-            if (response) {
-              speak(response);
-            }
-          }
-        } catch (error) {
-          console.error("Voice coach error:", error);
-          setAnswer(
-            "I could not process that right now. Please try again."
-          );
-        }
+      if (text) {
+        await askGBK(text);
       }
     };
 
     recognition.onerror = (event) => {
-      console.error("Speech recognition error:", event.error);
+      console.error(
+        "Speech recognition error:",
+        event.error
+      );
       setListening(false);
     };
 
@@ -104,21 +152,20 @@ export default function VoiceCoach({
   };
 
   const stopListening = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
-
+    recognitionRef.current?.stop();
     setListening(false);
+
+    if (typeof window !== "undefined") {
+      window.speechSynthesis?.cancel();
+    }
   };
 
   useEffect(() => {
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
+      recognitionRef.current?.stop();
 
       if (typeof window !== "undefined") {
-        window.speechSynthesis.cancel();
+        window.speechSynthesis?.cancel();
       }
     };
   }, []);
@@ -134,8 +181,11 @@ export default function VoiceCoach({
 
       <div className="voiceActions">
         {!listening ? (
-          <button onClick={startListening}>
-            🎙️ Start
+          <button
+            onClick={startListening}
+            disabled={busy}
+          >
+            🎙️ {busy ? "Thinking..." : "Start"}
           </button>
         ) : (
           <button onClick={stopListening}>
@@ -160,9 +210,24 @@ export default function VoiceCoach({
       {answer && (
         <div className="voiceResult">
           <strong>GBK AI:</strong>
-          <p>{answer}</p>
 
-          <button onClick={() => speak(answer)}>
+          <p>
+            {answer.reply ||
+              answer.corrected ||
+              answer.answer ||
+              answer}
+          </p>
+
+          <button
+            onClick={() =>
+              speak(
+                answer.reply ||
+                  answer.corrected ||
+                  answer.answer ||
+                  answer
+              )
+            }
+          >
             🔊 Listen again
           </button>
         </div>
