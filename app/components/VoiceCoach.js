@@ -1,14 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { languages, langCodes } from "../lib/languages";
+import { langCodes } from "../lib/languages";
 
-export default function VoiceCoach({
-  targetLanguage = "English",
-  path = "AI Tutor",
-}) {
+export default function VoiceCoach() {
   const [language, setLanguage] = useState("English");
-  const [target, setTarget] = useState(targetLanguage);
   const [listening, setListening] = useState(false);
   const [busy, setBusy] = useState(false);
   const [heard, setHeard] = useState("");
@@ -19,50 +15,25 @@ export default function VoiceCoach({
 
   useEffect(() => {
     const syncLanguage = () => {
-      const saved =
-        localStorage.getItem("gbk_language") || "English";
-
-      setLanguage(saved);
-
-      if (saved === target) {
-        const next =
-          languages.find((item) => item !== saved) || "English";
-        setTarget(next);
-      }
+      setLanguage(localStorage.getItem("gbk_language") || "English");
     };
 
     syncLanguage();
 
-    window.addEventListener(
-      "gbk-language-change",
-      syncLanguage
-    );
+    window.addEventListener("gbk-language-change", syncLanguage);
 
     return () => {
-      window.removeEventListener(
-        "gbk-language-change",
-        syncLanguage
-      );
+      window.removeEventListener("gbk-language-change", syncLanguage);
     };
-  }, [target]);
+  }, []);
 
   function speak(text, speakLanguage = "English") {
-    if (
-      !text ||
-      typeof window === "undefined" ||
-      !("speechSynthesis" in window)
-    ) {
-      return;
-    }
+    if (!text || typeof window === "undefined") return;
 
     window.speechSynthesis.cancel();
 
-    const utterance =
-      new SpeechSynthesisUtterance(text);
-
-    utterance.lang =
-      langCodes[speakLanguage] || "en-US";
-
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = langCodes[speakLanguage] || "en-US";
     utterance.rate = 1;
     utterance.pitch = 1;
     utterance.volume = 1;
@@ -70,7 +41,7 @@ export default function VoiceCoach({
     window.speechSynthesis.speak(utterance);
   }
 
-  async function askGBK(text) {
+  async function askGBK(text = heard) {
     const value = String(text || "").trim();
 
     if (!value) return;
@@ -88,17 +59,14 @@ export default function VoiceCoach({
         body: JSON.stringify({
           text: value,
           language,
-          targetLanguage: target,
-          path,
+          targetLanguage: "English",
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data?.error || "Tutor request failed"
-        );
+        throw new Error(data?.error || "Tutor request failed");
       }
 
       setAnswer(data);
@@ -116,29 +84,18 @@ export default function VoiceCoach({
         "";
 
       if (voiceText) {
-        speak(
-          voiceText,
-          data.targetLanguage || target
-        );
+        speak(voiceText, data.targetLanguage || "English");
       }
     } catch (error) {
-      console.error(
-        "GBK AI tutor error:",
-        error
-      );
+      console.error("GBK AI tutor error:", error);
 
-      const fallback = {
-        reply:
-          "I can still help you practice. Please try again.",
+      setAnswer({
         original: value,
+        reply: "I could not process that right now. Please try again.",
         corrected: "",
-        explanation:
-          "The tutor connection could not be completed.",
-        targetLanguage: target,
-        mode: "local",
-      };
+        explanation: "The GBK AI connection could not be completed.",
+      });
 
-      setAnswer(fallback);
       setStatus("Please try again");
     } finally {
       setBusy(false);
@@ -153,38 +110,28 @@ export default function VoiceCoach({
       window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      setStatus(
-        "Voice recognition is not supported. Please use Chrome."
-      );
+      setStatus("Voice recognition is not supported. Please use Chrome.");
       return;
     }
 
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
+    recognitionRef.current?.stop();
 
-    const recognition =
-      new SpeechRecognition();
+    const recognition = new SpeechRecognition();
 
-    recognition.lang =
-      langCodes[language] || "en-US";
-
+    recognition.lang = langCodes[language] || "en-US";
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
       setListening(true);
-      setStatus(
-        `Listening in ${language}…`
-      );
+      setStatus(`Listening in ${language}…`);
       setAnswer(null);
     };
 
     recognition.onresult = async (event) => {
       const text =
-        event.results?.[0]?.[0]?.transcript?.trim() ||
-        "";
+        event.results?.[0]?.[0]?.transcript?.trim() || "";
 
       setHeard(text);
       setListening(false);
@@ -195,15 +142,9 @@ export default function VoiceCoach({
     };
 
     recognition.onerror = (event) => {
-      console.error(
-        "Speech recognition error:",
-        event.error
-      );
-
+      console.error("Speech recognition error:", event.error);
       setListening(false);
-      setStatus(
-        "Voice input stopped. Please try again."
-      );
+      setStatus("Voice input stopped. Please try again.");
     };
 
     recognition.onend = () => {
@@ -215,9 +156,7 @@ export default function VoiceCoach({
   }
 
   function stopListening() {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
+    recognitionRef.current?.stop();
 
     setListening(false);
     setStatus("Stopped");
@@ -227,121 +166,83 @@ export default function VoiceCoach({
     }
   }
 
+  function listenToSentence() {
+    const sentence =
+      answer?.translation ||
+      answer?.corrected ||
+      answer?.reply ||
+      heard ||
+      "I want to learn English.";
+
+    speak(sentence, answer?.targetLanguage || "English");
+  }
+
+  function repeatCorrection() {
+    const sentence =
+      answer?.corrected ||
+      answer?.translation ||
+      answer?.reply ||
+      heard;
+
+    speak(sentence, answer?.targetLanguage || "English");
+  }
+
+  function practiceAgain() {
+    setHeard("");
+    setAnswer(null);
+    setStatus("");
+    window.speechSynthesis?.cancel();
+  }
+
   useEffect(() => {
     return () => {
       recognitionRef.current?.stop();
-
-      if (typeof window !== "undefined") {
-        window.speechSynthesis?.cancel();
-      }
+      window.speechSynthesis?.cancel();
     };
   }, []);
 
   return (
     <section className="card voiceCard">
+
       <div className="voiceHead">
         <div>
-          <span className="badge">
-            🎙️ {path}
-          </span>
+          <span className="badge">🎙️ Voice Coach</span>
 
           <h2>Talk to GBK AI</h2>
 
           <p>
-            Speak in your language. GBK AI
-            understands you and teaches your
-            selected target language.
+            Listen, speak, get corrected, repeat and improve.
           </p>
         </div>
 
-        <div
-          className={
-            listening ? "mic live" : "mic"
-          }
-        >
+        <div className={listening ? "mic live" : "mic"}>
           {listening ? "🔴" : "🎙️"}
-        </div>
-      </div>
-
-      <div className="languageGrid">
-        <div>
-          <label>
-            <b>I speak</b>
-          </label>
-
-          <select
-            value={language}
-            onChange={(event) =>
-              setLanguage(event.target.value)
-            }
-          >
-            {languages.map((item) => (
-              <option
-                key={item}
-                value={item}
-              >
-                {item}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label>
-            <b>Target Language</b>
-          </label>
-
-          <select
-            value={target}
-            onChange={(event) =>
-              setTarget(event.target.value)
-            }
-          >
-            {languages.map((item) => (
-              <option
-                key={item}
-                value={item}
-                disabled={item === language}
-              >
-                {item}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
 
       <textarea
         value={heard}
-        onChange={(event) =>
-          setHeard(event.target.value)
-        }
-        placeholder={`Speak or type in ${language}…`}
+        onChange={(event) => setHeard(event.target.value)}
+        placeholder="Speak or type in English…"
         rows={3}
       />
 
       <div className="actions">
+
         <button
           className="btn primary"
           onClick={startListening}
           disabled={listening || busy}
         >
-          🎙️{" "}
-          {listening
-            ? "Listening…"
-            : "Start"}
+          🎙️ {listening ? "Listening…" : "Start"}
         </button>
 
         <button
           className="btn"
-          onClick={() => askGBK(heard)}
-          disabled={
-            busy || !heard.trim()
-          }
+          onClick={() => askGBK()}
+          disabled={busy || !heard.trim()}
         >
-          ✨{" "}
-          {busy
-            ? "Thinking…"
-            : "Ask GBK AI"}
+          ✨ {busy ? "Thinking…" : "Ask GBK AI"}
         </button>
 
         <button
@@ -350,89 +251,137 @@ export default function VoiceCoach({
         >
           ⏹ Stop
         </button>
+
       </div>
 
       {status && (
-        <p className="status">
-          {status}
-        </p>
+        <p className="status">{status}</p>
       )}
 
-      {answer && (
-        <div className="coachResult">
+      <div className="coachSteps">
 
-          <div>
-            <b>You said</b>
+        <div className="coachStep">
+          <div className="stepNumber">1</div>
+
+          <div className="stepContent">
+            <h3>🎧 Listen</h3>
+
             <p>
-              {answer.original || heard}
+              Listen to the sentence from GBK AI.
             </p>
+
+            <button
+              className="btn"
+              onClick={listenToSentence}
+            >
+              🔊 Listen
+            </button>
           </div>
-
-          {answer.translation && (
-            <div>
-              <b>
-                Learn this sentence
-              </b>
-
-              <p>
-                {answer.translation}
-              </p>
-
-              <button
-                className="btn"
-                onClick={() =>
-                  speak(
-                    answer.translation,
-                    answer.targetLanguage ||
-                      target
-                  )
-                }
-              >
-                🔊 Listen
-              </button>
-            </div>
-          )}
-
-          {(answer.corrected ||
-            answer.reply) && (
-            <div>
-              <b>
-                GBK AI answer / correction
-              </b>
-
-              <p>
-                {answer.corrected ||
-                  answer.reply}
-              </p>
-
-              <button
-                className="btn"
-                onClick={() =>
-                  speak(
-                    answer.corrected ||
-                      answer.reply,
-                    answer.targetLanguage ||
-                      target
-                  )
-                }
-              >
-                🔊 Repeat
-              </button>
-            </div>
-          )}
-
-          {answer.explanation && (
-            <div>
-              <b>Why</b>
-
-              <p>
-                {answer.explanation}
-              </p>
-            </div>
-          )}
-
         </div>
-      )}
+
+        <div className="coachStep">
+          <div className="stepNumber">2</div>
+
+          <div className="stepContent">
+            <h3>🎙️ Speak</h3>
+
+            <p>
+              Speak the sentence clearly.
+            </p>
+
+            <button
+              className="btn primary"
+              onClick={startListening}
+              disabled={listening || busy}
+            >
+              🎙️ {listening ? "Listening…" : "Speak"}
+            </button>
+          </div>
+        </div>
+
+        <div className="coachStep">
+          <div className="stepNumber">3</div>
+
+          <div className="stepContent">
+            <h3>✨ GBK AI Correction</h3>
+
+            <p>
+              Get instant feedback and a corrected answer.
+            </p>
+
+            {answer ? (
+              <>
+                <div className="coachResult">
+                  <strong>You said</strong>
+                  <p>{answer.original || heard}</p>
+
+                  <strong>
+                    GBK AI correction / answer
+                  </strong>
+
+                  <p>
+                    {answer.corrected ||
+                      answer.reply ||
+                      "No correction needed."}
+                  </p>
+
+                  {answer.explanation && (
+                    <>
+                      <strong>Why</strong>
+                      <p>{answer.explanation}</p>
+                    </>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="coachResult">
+                Your answer and GBK AI correction will appear here.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="coachStep">
+          <div className="stepNumber">4</div>
+
+          <div className="stepContent">
+            <h3>🔊 Repeat</h3>
+
+            <p>
+              Listen and repeat the corrected sentence.
+            </p>
+
+            <button
+              className="btn"
+              onClick={repeatCorrection}
+              disabled={!answer}
+            >
+              🔊 Repeat
+            </button>
+          </div>
+        </div>
+
+        <div className="coachStep">
+          <div className="stepNumber">5</div>
+
+          <div className="stepContent">
+            <h3>🔄 Practice Again / Improve</h3>
+
+            <p>
+              Try again with a new sentence or the same one.
+            </p>
+
+            <button
+              className="btn"
+              onClick={practiceAgain}
+            >
+              🔄 Practice Again
+            </button>
+          </div>
+        </div>
+
+      </div>
+
     </section>
   );
 }
