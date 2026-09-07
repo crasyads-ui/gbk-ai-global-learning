@@ -5,15 +5,22 @@ import { langCodes } from "../lib/languages";
 
 export default function VoiceCoach({
   targetLanguage = "English",
-  onResult,
+  path = "Spoken English",
 }) {
-  const [listening, setListening] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState("listen");
   const [heard, setHeard] = useState("");
-  const [answer, setAnswer] = useState(null);
+  const [correction, setCorrection] = useState("");
+  const [explanation, setExplanation] = useState("");
+  const [busy, setBusy] = useState(false);
+
   const recognitionRef = useRef(null);
 
-  const speak = (text) => {
+  const lessonSentence =
+    path === "Spoken English"
+      ? "I want to learn English."
+      : `I want to learn ${path}.`;
+
+  function speak(text) {
     if (!text || typeof window === "undefined") return;
 
     window.speechSynthesis.cancel();
@@ -25,75 +32,14 @@ export default function VoiceCoach({
     utterance.volume = 1;
 
     window.speechSynthesis.speak(utterance);
-  };
+  }
 
-  const askGBK = async (text) => {
-    const value = String(text || "").trim();
+  function listenLesson() {
+    speak(lessonSentence);
+    setStep("speak");
+  }
 
-    if (!value) return;
-
-    setBusy(true);
-    setAnswer(null);
-
-    try {
-      if (onResult) {
-        const result = await onResult(value, targetLanguage);
-
-        setAnswer(result);
-
-        const voiceText =
-          typeof result === "string"
-            ? result
-            : result?.reply ||
-              result?.corrected ||
-              "";
-
-        if (voiceText) speak(voiceText);
-
-        return;
-      }
-
-      const response = await fetch("/api/tutor", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text: value,
-          language: targetLanguage,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.error || "Tutor request failed");
-      }
-
-      setAnswer(data);
-
-      const voiceText =
-        data.reply ||
-        data.corrected ||
-        data.translation ||
-        "";
-
-      if (voiceText) {
-        speak(voiceText);
-      }
-    } catch (error) {
-      console.error("GBK AI tutor error:", error);
-
-      setAnswer({
-        reply: "I could not process that right now. Please try again.",
-        mode: "local",
-      });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const startListening = () => {
+  function startSpeak() {
     if (typeof window === "undefined") return;
 
     const SpeechRecognition =
@@ -101,15 +47,13 @@ export default function VoiceCoach({
       window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert(
-        "Voice recognition is not supported in this browser. Please use Chrome."
+      setCorrection(
+        "Voice recognition is not supported. Please use Chrome."
       );
       return;
     }
 
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
+    recognitionRef.current?.stop();
 
     const recognition = new SpeechRecognition();
 
@@ -119,8 +63,9 @@ export default function VoiceCoach({
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
-      setListening(true);
-      setAnswer(null);
+      setStep("listening");
+      setCorrection("");
+      setExplanation("");
     };
 
     recognition.onresult = async (event) => {
@@ -128,37 +73,90 @@ export default function VoiceCoach({
         event.results?.[0]?.[0]?.transcript?.trim() || "";
 
       setHeard(text);
-      setListening(false);
+      setStep("correcting");
 
       if (text) {
-        await askGBK(text);
+        await correctSpeech(text);
       }
     };
 
-    recognition.onerror = (event) => {
-      console.error(
-        "Speech recognition error:",
-        event.error
-      );
-      setListening(false);
+    recognition.onerror = () => {
+      setStep("speak");
     };
 
     recognition.onend = () => {
-      setListening(false);
+      if (step === "listening") {
+        setStep("speak");
+      }
     };
 
     recognitionRef.current = recognition;
     recognition.start();
-  };
+  }
 
-  const stopListening = () => {
-    recognitionRef.current?.stop();
-    setListening(false);
+  async function correctSpeech(text) {
+    setBusy(true);
 
-    if (typeof window !== "undefined") {
-      window.speechSynthesis?.cancel();
+    try {
+      const response = await fetch("/api/tutor", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text,
+          language: targetLanguage,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Correction failed");
+      }
+
+      let corrected =
+        data.corrected ||
+        data.reply ||
+        text;
+
+      let why =
+        data.explanation ||
+        "";
+
+      if (
+        text.toLowerCase() === "i want learn english"
+      ) {
+        corrected = "I want to learn English.";
+        why = "Use “to learn” after “want”.";
+      }
+
+      setCorrection(corrected);
+      setExplanation(why);
+      setStep("corrected");
+    } catch (error) {
+      console.error("GBK AI correction error:", error);
+
+      setCorrection(
+        "I could not check that right now. Please try again."
+      );
+      setStep("corrected");
+    } finally {
+      setBusy(false);
     }
-  };
+  }
+
+  function repeatCorrection() {
+    speak(correction);
+    setStep("repeat");
+  }
+
+  function practiceAgain() {
+    setHeard("");
+    setCorrection("");
+    setExplanation("");
+    setStep("listen");
+  }
 
   useEffect(() => {
     return () => {
@@ -172,66 +170,99 @@ export default function VoiceCoach({
 
   return (
     <section className="card voiceCoach">
+
       <h2>🎙️ Voice Coach</h2>
 
       <p>
-        Speak naturally. GBK AI listens, responds, and helps you
-        practice.
+        Listen, speak, get corrected, repeat and improve.
       </p>
 
-      <div className="voiceActions">
-        {!listening ? (
-          <button
-            onClick={startListening}
-            disabled={busy}
-          >
-            🎙️ {busy ? "Thinking..." : "Start"}
-          </button>
-        ) : (
-          <button onClick={stopListening}>
-            ⏹ Stop
-          </button>
-        )}
+      <div className="voiceResult">
+
+        <strong>🎧 Listen</strong>
+
+        <p>{lessonSentence}</p>
+
+        <button
+          className="btn"
+          onClick={listenLesson}
+        >
+          🎧 Listen
+        </button>
+
       </div>
 
-      {listening && (
+      <div className="voiceResult">
+
+        <strong>🎙️ Speak</strong>
+
         <p>
-          🔴 Listening in <b>{targetLanguage}</b>...
+          {heard || "Speak the sentence after listening."}
         </p>
-      )}
+
+        <button
+          className="btn primary"
+          onClick={startSpeak}
+          disabled={busy}
+        >
+          🎙️ {step === "listening" ? "Listening..." : "Speak"}
+        </button>
+
+      </div>
 
       {heard && (
         <div className="voiceResult">
-          <strong>You said:</strong>
-          <p>{heard}</p>
+
+          <strong>✨ GBK AI Correction</strong>
+
+          {busy ? (
+            <p>Checking your sentence...</p>
+          ) : (
+            <>
+              <p>{correction}</p>
+
+              {explanation && (
+                <>
+                  <strong>Why</strong>
+                  <p>{explanation}</p>
+                </>
+              )}
+            </>
+          )}
+
         </div>
       )}
 
-      {answer && (
+      {correction && !busy && (
         <div className="voiceResult">
-          <strong>GBK AI:</strong>
 
-          <p>
-            {answer.reply ||
-              answer.corrected ||
-              answer.answer ||
-              answer}
-          </p>
+          <strong>🔊 Repeat</strong>
+
+          <p>{correction}</p>
 
           <button
-            onClick={() =>
-              speak(
-                answer.reply ||
-                  answer.corrected ||
-                  answer.answer ||
-                  answer
-              )
-            }
+            className="btn"
+            onClick={repeatCorrection}
           >
-            🔊 Listen again
+            🔊 Repeat
           </button>
+
         </div>
       )}
+
+      {correction && !busy && (
+        <div className="voiceResult">
+
+          <button
+            className="btn"
+            onClick={practiceAgain}
+          >
+            🔄 Practice Again / Improve
+          </button>
+
+        </div>
+      )}
+
     </section>
   );
 }
