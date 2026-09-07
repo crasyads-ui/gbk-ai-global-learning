@@ -5,14 +5,13 @@ import { langCodes } from "../lib/languages";
 
 const LANGUAGE_ALIASES = {
   english: "English",
-  hindi: "हिन्दी",
-  hindi: "हिन्दी",
   telugu: "తెలుగు",
+  hindi: "हिन्दी",
+  marathi: "मराठी",
+  bengali: "বাংলা",
   tamil: "தமிழ்",
   kannada: "ಕನ್ನಡ",
   malayalam: "മലയാളം",
-  bengali: "বাংলা",
-  marathi: "मराठी",
   gujarati: "ગુજરાતી",
   punjabi: "ਪੰਜਾਬੀ",
   urdu: "اردو",
@@ -32,28 +31,64 @@ const LANGUAGE_ALIASES = {
   chinese: "中文",
 };
 
+const LANGUAGE_PATTERNS = [
+  ["English", ["english", "inglês", "ingles", "angličtina"]],
+  ["తెలుగు", ["telugu", "తెలుగు"]],
+  ["हिन्दी", ["hindi", "हिन्दी", "हिंदी"]],
+  ["मराठी", ["marathi", "मराठी"]],
+  ["বাংলা", ["bengali", "bangla", "বাংলা"]],
+  ["தமிழ்", ["tamil", "தமிழ்"]],
+  ["ಕನ್ನಡ", ["kannada", "ಕನ್ನಡ"]],
+  ["മലയാളം", ["malayalam", "മലയാളം"]],
+  ["ગુજરાતી", ["gujarati", "ગુજરાતી"]],
+  ["ਪੰਜਾਬੀ", ["punjabi", "ਪੰਜਾਬੀ"]],
+  ["اردو", ["urdu", "اردو"]],
+  ["Español", ["spanish", "español", "espanol"]],
+  ["Français", ["french", "français", "francais"]],
+  ["Deutsch", ["german", "deutsch"]],
+  ["Português", ["portuguese", "português", "portugues"]],
+  ["Italiano", ["italian", "italiano"]],
+  ["العربية", ["arabic", "العربية"]],
+  ["Türkçe", ["turkish", "türkçe", "turkce"]],
+  ["Русский", ["russian", "русский"]],
+  ["Bahasa Indonesia", ["indonesian", "bahasa indonesia"]],
+  ["Tiếng Việt", ["vietnamese", "tiếng việt", "tieng viet"]],
+  ["ไทย", ["thai", "ไทย"]],
+  ["日本語", ["japanese", "日本語"]],
+  ["한국어", ["korean", "한국어"]],
+  ["中文", ["chinese", "中文", "mandarin"]],
+];
+
 function detectLanguage(text, fallback = "English") {
   const value = String(text || "");
 
   const scripts = [
-    [/[\u0C00-\u0C7F]/, "తెలుగు"],
-    [/[\u0900-\u097F]/, "हिन्दी"],
-    [/[\u0B80-\u0BFF]/, "தமிழ்"],
-    [/[\u0C80-\u0CFF]/, "ಕನ್ನಡ"],
-    [/[\u0D00-\u0D7F]/, "മലയാളം"],
-    [/[\u0980-\u09FF]/, "বাংলা"],
-    [/[\u0A80-\u0AFF]/, "ગુજરાતી"],
-    [/[\u0A00-\u0A7F]/, "ਪੰਜਾਬੀ"],
-    [/[\u0600-\u06FF]/, "العربية"],
-    [/[\u3040-\u30FF]/, "日本語"],
-    [/[\uAC00-\uD7AF]/, "한국어"],
-    [/[\u0E00-\u0E7F]/, "ไทย"],
-    [/[\u4E00-\u9FFF]/, "中文"],
-    [/[\u0400-\u04FF]/, "Русский"],
+    [/[0C00-0C7F]/, "తెలుగు"],
+    [/[0900-097F]/, "हिन्दी"],
+    [/[0B80-0BFF]/, "தமிழ்"],
+    [/[0C80-0CFF]/, "ಕನ್ನಡ"],
+    [/[0D00-0D7F]/, "മലയാളം"],
+    [/[0980-09FF]/, "বাংলা"],
+    [/[0A80-0AFF]/, "ગુજરાતી"],
+    [/[0A00-0A7F]/, "ਪੰਜਾਬੀ"],
+    [/[0600-06FF]/, "العربية"],
+    [/[3040-30FF]/, "日本語"],
+    [/[AC00-D7AF]/, "한국어"],
+    [/[0E00-0E7F]/, "ไทย"],
+    [/[4E00-9FFF]/, "中文"],
+    [/[0400-04FF]/, "Русский"],
   ];
 
   for (const [regex, language] of scripts) {
     if (regex.test(value)) return language;
+  }
+
+  const lower = value.toLowerCase();
+
+  for (const [language, patterns] of LANGUAGE_PATTERNS) {
+    if (patterns.some((pattern) => lower.includes(pattern))) {
+      return language;
+    }
   }
 
   return fallback;
@@ -62,33 +97,38 @@ function detectLanguage(text, fallback = "English") {
 function detectRequestedLanguage(text) {
   const value = String(text || "").toLowerCase();
 
-  for (const [alias, language] of Object.entries(
-    LANGUAGE_ALIASES
-  )) {
-    const patterns = [
-      `in ${alias}`,
-      `into ${alias}`,
-      `to ${alias}`,
-      `learn ${alias}`,
-      `speak ${alias}`,
-      `practice ${alias}`,
-      `teach me ${alias}`,
-    ];
+  for (const [language, patterns] of LANGUAGE_PATTERNS) {
+    for (const pattern of patterns) {
+      const requests = [
+        `in ${pattern}`,
+        `into ${pattern}`,
+        `to ${pattern}`,
+        `learn ${pattern}`,
+        `speak ${pattern}`,
+        `practice ${pattern}`,
+        `teach me ${pattern}`,
+        `teach ${pattern}`,
+        `conversation in ${pattern}`,
+        `conversation ${pattern}`,
+      ];
 
-    if (patterns.some((pattern) => value.includes(pattern))) {
-      return language;
+      if (requests.some((request) => value.includes(request))) {
+        return language;
+      }
     }
   }
 
   return "auto";
 }
 
+function getVoiceLanguage(language) {
+  return langCodes[language] || "en-US";
+}
+
 export default function VoiceCoach() {
   const [language, setLanguage] = useState("English");
-  const [detectedLanguage, setDetectedLanguage] =
-    useState("");
-  const [learningLanguage, setLearningLanguage] =
-    useState("");
+  const [detectedLanguage, setDetectedLanguage] = useState("");
+  const [learningLanguage, setLearningLanguage] = useState("");
 
   const [listening, setListening] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -123,25 +163,22 @@ export default function VoiceCoach() {
   function speak(text, speakLanguage = "English") {
     if (!text || typeof window === "undefined") return;
 
-    window.speechSynthesis.cancel();
+    window.speechSynthesis?.cancel();
 
-    const utterance =
-      new SpeechSynthesisUtterance(text);
+    const utterance = new SpeechSynthesisUtterance(text);
 
-    utterance.lang =
-      langCodes[speakLanguage] || "en-US";
-
+    utterance.lang = getVoiceLanguage(speakLanguage);
     utterance.rate = 1;
     utterance.pitch = 1;
     utterance.volume = 1;
 
-    window.speechSynthesis.speak(utterance);
+    window.speechSynthesis?.speak(utterance);
   }
 
   async function askGBK(text = heard) {
     const value = String(text || "").trim();
 
-    if (!value) return;
+    if (!value || busy) return;
 
     setBusy(true);
     setStatus("Thinking…");
@@ -166,12 +203,7 @@ export default function VoiceCoach() {
         },
         body: JSON.stringify({
           text: value,
-
-          // Language used for explanation/context.
           language: source,
-
-          // Automatically detected from the user's
-          // natural request, e.g. "tell me in Thai".
           targetLanguage: requested,
         }),
       });
@@ -185,10 +217,10 @@ export default function VoiceCoach() {
       }
 
       const finalSource =
-        data.sourceLanguage || source;
+        data?.sourceLanguage || source;
 
       const finalTarget =
-        data.targetLanguage &&
+        data?.targetLanguage &&
         data.targetLanguage !== "auto"
           ? data.targetLanguage
           : requested !== "auto"
@@ -201,22 +233,25 @@ export default function VoiceCoach() {
         setLearningLanguage(finalTarget);
       }
 
-      setAnswer({
+      const result = {
         ...data,
+        original: data?.original || value,
         sourceLanguage: finalSource,
         targetLanguage: finalTarget || "auto",
-      });
+      };
+
+      setAnswer(result);
 
       setStatus(
-        data.mode === "ai"
+        data?.mode === "ai"
           ? "GBK AI coach ready"
           : "GBK AI practice mode"
       );
 
       const voiceText =
-        data.corrected ||
-        data.translation ||
-        data.reply ||
+        data?.corrected ||
+        data?.translation ||
+        data?.reply ||
         "";
 
       if (voiceText) {
@@ -237,7 +272,7 @@ export default function VoiceCoach() {
         targetLanguage:
           requested !== "auto"
             ? requested
-            : "",
+            : "auto",
         translation: "",
         corrected: "",
         reply:
@@ -268,11 +303,10 @@ export default function VoiceCoach() {
 
     recognitionRef.current?.stop();
 
-    const recognition =
-      new SpeechRecognition();
+    const recognition = new SpeechRecognition();
 
     recognition.lang =
-      langCodes[language] || "en-US";
+      getVoiceLanguage(language);
 
     recognition.continuous = false;
     recognition.interimResults = false;
@@ -316,7 +350,13 @@ export default function VoiceCoach() {
     };
 
     recognitionRef.current = recognition;
-    recognition.start();
+
+    try {
+      recognition.start();
+    } catch (error) {
+      console.error(error);
+      setListening(false);
+    }
   }
 
   function stopListening() {
@@ -330,20 +370,39 @@ export default function VoiceCoach() {
     }
   }
 
-  function listenToSentence() {
-    const sentence =
+  function getTargetLanguage() {
+    if (
+      answer?.targetLanguage &&
+      answer.targetLanguage !== "auto"
+    ) {
+      return answer.targetLanguage;
+    }
+
+    if (learningLanguage) {
+      return learningLanguage;
+    }
+
+    return "English";
+  }
+
+  function getLearningSentence() {
+    return (
       answer?.translation ||
       answer?.corrected ||
       answer?.reply ||
-      heard;
+      ""
+    );
+  }
 
-    const speakLanguage =
-      answer?.targetLanguage &&
-      answer.targetLanguage !== "auto"
-        ? answer.targetLanguage
-        : "English";
+  function listenToSentence() {
+    const sentence = getLearningSentence();
 
-    speak(sentence, speakLanguage);
+    if (!sentence) return;
+
+    speak(
+      sentence,
+      getTargetLanguage()
+    );
   }
 
   function repeatCorrection() {
@@ -351,15 +410,14 @@ export default function VoiceCoach() {
       answer?.corrected ||
       answer?.translation ||
       answer?.reply ||
-      heard;
+      "";
 
-    const speakLanguage =
-      answer?.targetLanguage &&
-      answer.targetLanguage !== "auto"
-        ? answer.targetLanguage
-        : "English";
+    if (!sentence) return;
 
-    speak(sentence, speakLanguage);
+    speak(
+      sentence,
+      getTargetLanguage()
+    );
   }
 
   function practiceAgain() {
@@ -516,8 +574,8 @@ export default function VoiceCoach() {
             </h3>
 
             <p>
-              GBK AI automatically detects
-              the language and learning language.
+              GBK AI detects the spoken language
+              and requested learning language.
             </p>
 
             {answer ? (
@@ -528,28 +586,24 @@ export default function VoiceCoach() {
                 </strong>
 
                 <p>
-                  {answer.original ||
-                    heard}
+                  {answer.original || heard}
                 </p>
 
-                {(answer.sourceLanguage ||
-                  detectedLanguage) && (
-                  <>
-                    <strong>
-                      🌐 Detected language
-                    </strong>
+                <strong>
+                  🌐 Detected language
+                </strong>
 
-                    <p>
-                      {answer.sourceLanguage ||
-                        detectedLanguage}
-                    </p>
-                  </>
-                )}
+                <p>
+                  {answer.sourceLanguage ||
+                    detectedLanguage ||
+                    language}
+                </p>
 
-                {(answer.targetLanguage &&
-                  answer.targetLanguage !==
-                    "auto") ||
-                  learningLanguage ? (
+                {(
+                  answer.targetLanguage &&
+                  answer.targetLanguage !== "auto"
+                ) ||
+                learningLanguage ? (
                   <>
                     <strong>
                       🎯 Learning language
@@ -557,8 +611,7 @@ export default function VoiceCoach() {
 
                     <p>
                       {answer.targetLanguage &&
-                      answer.targetLanguage !==
-                        "auto"
+                      answer.targetLanguage !== "auto"
                         ? answer.targetLanguage
                         : learningLanguage}
                     </p>
@@ -618,8 +671,8 @@ export default function VoiceCoach() {
             <h3>🔊 Repeat</h3>
 
             <p>
-              Listen and repeat the translated
-              or corrected sentence.
+              Listen to the corrected sentence
+              and repeat it aloud.
             </p>
 
             <button
@@ -641,11 +694,11 @@ export default function VoiceCoach() {
             </h3>
 
             <p>
-              Try again with a new sentence.
+              Try again and improve your speaking.
             </p>
 
             <button
-              className="btn"
+              className="btn primary"
               onClick={practiceAgain}
             >
               🔄 Practice Again
@@ -654,7 +707,6 @@ export default function VoiceCoach() {
         </div>
 
       </div>
-
     </section>
   );
 }
