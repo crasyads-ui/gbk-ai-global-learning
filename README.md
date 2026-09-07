@@ -1,7 +1,6 @@
-# GBK AI Global Learning V11
+# GBK AI Global Learning V12
 
-Global multilingual learning foundation with 25 interface languages, real-world skill paths, AI tutor, speech recognition, browser speech playback at normal speed (rate 1.0), correction, practice and progress.
+Consolidated global learning foundation: multilingual language selector, shared voice coach, speak/type interaction, normal-speed browser speech, practical learning paths, real-life roleplay concepts, progress, PWA install flow, service worker, and tutor API with safe local fallback plus optional production AI provider.
 
-Core routes: `/`, `/paths`, `/lesson`, `/practice`, `/tutor`, `/progress`, `/api/health`, `/api/tutor`.
-
-Voice availability depends on the browser/device. Production AI can be enabled with `AI_PROVIDER_API_KEY` and `AI_PROVIDER_URL`.
+## Environment for production AI
+Set `AI_PROVIDER_URL` and `AI_PROVIDER_API_KEY` in Vercel when a compatible chat-completions provider is available. Without these variables the app remains usable in local practice mode and clearly reports that mode.
