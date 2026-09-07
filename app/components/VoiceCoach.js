@@ -3,8 +3,93 @@
 import { useEffect, useRef, useState } from "react";
 import { langCodes } from "../lib/languages";
 
+const LANGUAGE_ALIASES = {
+  english: "English",
+  hindi: "हिन्दी",
+  hindi: "हिन्दी",
+  telugu: "తెలుగు",
+  tamil: "தமிழ்",
+  kannada: "ಕನ್ನಡ",
+  malayalam: "മലയാളം",
+  bengali: "বাংলা",
+  marathi: "मराठी",
+  gujarati: "ગુજરાતી",
+  punjabi: "ਪੰਜਾਬੀ",
+  urdu: "اردو",
+  spanish: "Español",
+  french: "Français",
+  german: "Deutsch",
+  portuguese: "Português",
+  italian: "Italiano",
+  arabic: "العربية",
+  turkish: "Türkçe",
+  russian: "Русский",
+  indonesian: "Bahasa Indonesia",
+  vietnamese: "Tiếng Việt",
+  thai: "ไทย",
+  japanese: "日本語",
+  korean: "한국어",
+  chinese: "中文",
+};
+
+function detectLanguage(text, fallback = "English") {
+  const value = String(text || "");
+
+  const scripts = [
+    [/[\u0C00-\u0C7F]/, "తెలుగు"],
+    [/[\u0900-\u097F]/, "हिन्दी"],
+    [/[\u0B80-\u0BFF]/, "தமிழ்"],
+    [/[\u0C80-\u0CFF]/, "ಕನ್ನಡ"],
+    [/[\u0D00-\u0D7F]/, "മലയാളം"],
+    [/[\u0980-\u09FF]/, "বাংলা"],
+    [/[\u0A80-\u0AFF]/, "ગુજરાતી"],
+    [/[\u0A00-\u0A7F]/, "ਪੰਜਾਬੀ"],
+    [/[\u0600-\u06FF]/, "العربية"],
+    [/[\u3040-\u30FF]/, "日本語"],
+    [/[\uAC00-\uD7AF]/, "한국어"],
+    [/[\u0E00-\u0E7F]/, "ไทย"],
+    [/[\u4E00-\u9FFF]/, "中文"],
+    [/[\u0400-\u04FF]/, "Русский"],
+  ];
+
+  for (const [regex, language] of scripts) {
+    if (regex.test(value)) return language;
+  }
+
+  return fallback;
+}
+
+function detectRequestedLanguage(text) {
+  const value = String(text || "").toLowerCase();
+
+  for (const [alias, language] of Object.entries(
+    LANGUAGE_ALIASES
+  )) {
+    const patterns = [
+      `in ${alias}`,
+      `into ${alias}`,
+      `to ${alias}`,
+      `learn ${alias}`,
+      `speak ${alias}`,
+      `practice ${alias}`,
+      `teach me ${alias}`,
+    ];
+
+    if (patterns.some((pattern) => value.includes(pattern))) {
+      return language;
+    }
+  }
+
+  return "auto";
+}
+
 export default function VoiceCoach() {
   const [language, setLanguage] = useState("English");
+  const [detectedLanguage, setDetectedLanguage] =
+    useState("");
+  const [learningLanguage, setLearningLanguage] =
+    useState("");
+
   const [listening, setListening] = useState(false);
   const [busy, setBusy] = useState(false);
   const [heard, setHeard] = useState("");
@@ -15,14 +100,23 @@ export default function VoiceCoach() {
 
   useEffect(() => {
     const syncLanguage = () => {
-      setLanguage(localStorage.getItem("gbk_language") || "English");
+      setLanguage(
+        localStorage.getItem("gbk_language") || "English"
+      );
     };
 
     syncLanguage();
-    window.addEventListener("gbk-language-change", syncLanguage);
+
+    window.addEventListener(
+      "gbk-language-change",
+      syncLanguage
+    );
 
     return () => {
-      window.removeEventListener("gbk-language-change", syncLanguage);
+      window.removeEventListener(
+        "gbk-language-change",
+        syncLanguage
+      );
     };
   }, []);
 
@@ -31,8 +125,12 @@ export default function VoiceCoach() {
 
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = langCodes[speakLanguage] || "en-US";
+    const utterance =
+      new SpeechSynthesisUtterance(text);
+
+    utterance.lang =
+      langCodes[speakLanguage] || "en-US";
+
     utterance.rate = 1;
     utterance.pitch = 1;
     utterance.volume = 1;
@@ -49,6 +147,17 @@ export default function VoiceCoach() {
     setStatus("Thinking…");
     setAnswer(null);
 
+    const source = detectLanguage(value, language);
+    const requested = detectRequestedLanguage(value);
+
+    setDetectedLanguage(source);
+
+    if (requested !== "auto") {
+      setLearningLanguage(requested);
+    } else {
+      setLearningLanguage("");
+    }
+
     try {
       const response = await fetch("/api/tutor", {
         method: "POST",
@@ -57,18 +166,46 @@ export default function VoiceCoach() {
         },
         body: JSON.stringify({
           text: value,
-          language,
-          targetLanguage: language === "English" ? "Telugu" : "English",
+
+          // Language used for explanation/context.
+          language: source,
+
+          // Automatically detected from the user's
+          // natural request, e.g. "tell me in Thai".
+          targetLanguage: requested,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.error || "Tutor request failed");
+        throw new Error(
+          data?.error || "Tutor request failed"
+        );
       }
 
-      setAnswer(data);
+      const finalSource =
+        data.sourceLanguage || source;
+
+      const finalTarget =
+        data.targetLanguage &&
+        data.targetLanguage !== "auto"
+          ? data.targetLanguage
+          : requested !== "auto"
+          ? requested
+          : "";
+
+      setDetectedLanguage(finalSource);
+
+      if (finalTarget) {
+        setLearningLanguage(finalTarget);
+      }
+
+      setAnswer({
+        ...data,
+        sourceLanguage: finalSource,
+        targetLanguage: finalTarget || "auto",
+      });
 
       setStatus(
         data.mode === "ai"
@@ -85,18 +222,28 @@ export default function VoiceCoach() {
       if (voiceText) {
         speak(
           voiceText,
-          data.targetLanguage || "English"
+          finalTarget || "English"
         );
       }
     } catch (error) {
-      console.error("GBK AI tutor error:", error);
+      console.error(
+        "GBK AI tutor error:",
+        error
+      );
 
       setAnswer({
         original: value,
+        sourceLanguage: source,
+        targetLanguage:
+          requested !== "auto"
+            ? requested
+            : "",
         translation: "",
         corrected: "",
-        reply: "I could not process that right now. Please try again.",
-        explanation: "The GBK AI connection could not be completed.",
+        reply:
+          "I could not process that right now. Please try again.",
+        explanation:
+          "The GBK AI connection could not be completed.",
       });
 
       setStatus("Please try again");
@@ -121,22 +268,28 @@ export default function VoiceCoach() {
 
     recognitionRef.current?.stop();
 
-    const recognition = new SpeechRecognition();
+    const recognition =
+      new SpeechRecognition();
 
-    recognition.lang = langCodes[language] || "en-US";
+    recognition.lang =
+      langCodes[language] || "en-US";
+
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
       setListening(true);
-      setStatus(`Listening in ${language}…`);
+      setStatus(
+        `Listening in ${language}…`
+      );
       setAnswer(null);
     };
 
     recognition.onresult = async (event) => {
       const text =
-        event.results?.[0]?.[0]?.transcript?.trim() || "";
+        event.results?.[0]?.[0]?.transcript?.trim() ||
+        "";
 
       setHeard(text);
       setListening(false);
@@ -153,7 +306,9 @@ export default function VoiceCoach() {
       );
 
       setListening(false);
-      setStatus("Voice input stopped. Please try again.");
+      setStatus(
+        "Voice input stopped. Please try again."
+      );
     };
 
     recognition.onend = () => {
@@ -183,8 +338,10 @@ export default function VoiceCoach() {
       heard;
 
     const speakLanguage =
-      answer?.targetLanguage ||
-      (language === "English" ? "Telugu" : "English");
+      answer?.targetLanguage &&
+      answer.targetLanguage !== "auto"
+        ? answer.targetLanguage
+        : "English";
 
     speak(sentence, speakLanguage);
   }
@@ -197,8 +354,10 @@ export default function VoiceCoach() {
       heard;
 
     const speakLanguage =
-      answer?.targetLanguage ||
-      (language === "English" ? "Telugu" : "English");
+      answer?.targetLanguage &&
+      answer.targetLanguage !== "auto"
+        ? answer.targetLanguage
+        : "English";
 
     speak(sentence, speakLanguage);
   }
@@ -206,6 +365,8 @@ export default function VoiceCoach() {
   function practiceAgain() {
     setHeard("");
     setAnswer(null);
+    setDetectedLanguage("");
+    setLearningLanguage("");
     setStatus("");
 
     if (typeof window !== "undefined") {
@@ -225,29 +386,35 @@ export default function VoiceCoach() {
 
       <div className="voiceHead">
         <div>
-          <span className="badge">🎙️ Voice Coach</span>
+          <span className="badge">
+            🎙️ Voice Coach
+          </span>
 
           <h2>Talk to GBK AI</h2>
 
           <p>
-            Listen, speak, get corrected, translate,
+            Listen, speak, translate, get corrected,
             repeat and improve.
           </p>
         </div>
 
-        <div className={listening ? "mic live" : "mic"}>
+        <div
+          className={
+            listening
+              ? "mic live"
+              : "mic"
+          }
+        >
           {listening ? "🔴" : "🎙️"}
         </div>
       </div>
 
       <textarea
         value={heard}
-        onChange={(event) => setHeard(event.target.value)}
-        placeholder={
-          language === "English"
-            ? "Speak or type in English…"
-            : `Speak or type in ${language}…`
+        onChange={(event) =>
+          setHeard(event.target.value)
         }
+        placeholder={`Speak or type in ${language}…`}
         rows={3}
       />
 
@@ -258,15 +425,23 @@ export default function VoiceCoach() {
           onClick={startListening}
           disabled={listening || busy}
         >
-          🎙️ {listening ? "Listening…" : "Start"}
+          🎙️{" "}
+          {listening
+            ? "Listening…"
+            : "Start"}
         </button>
 
         <button
           className="btn"
           onClick={() => askGBK()}
-          disabled={busy || !heard.trim()}
+          disabled={
+            busy || !heard.trim()
+          }
         >
-          ✨ {busy ? "Thinking…" : "Ask GBK AI"}
+          ✨{" "}
+          {busy
+            ? "Thinking…"
+            : "Ask GBK AI"}
         </button>
 
         <button
@@ -279,7 +454,9 @@ export default function VoiceCoach() {
       </div>
 
       {status && (
-        <p className="status">{status}</p>
+        <p className="status">
+          {status}
+        </p>
       )}
 
       <div className="coachSteps">
@@ -291,7 +468,8 @@ export default function VoiceCoach() {
             <h3>🎧 Listen</h3>
 
             <p>
-              Listen to the translated or corrected sentence.
+              Listen to the translated or
+              corrected sentence.
             </p>
 
             <button
@@ -317,9 +495,14 @@ export default function VoiceCoach() {
             <button
               className="btn primary"
               onClick={startListening}
-              disabled={listening || busy}
+              disabled={
+                listening || busy
+              }
             >
-              🎙️ {listening ? "Listening…" : "Speak"}
+              🎙️{" "}
+              {listening
+                ? "Listening…"
+                : "Speak"}
             </button>
           </div>
         </div>
@@ -328,23 +511,66 @@ export default function VoiceCoach() {
           <div className="stepNumber">3</div>
 
           <div className="stepContent">
-            <h3>✨ GBK AI Correction</h3>
+            <h3>
+              ✨ GBK AI Correction
+            </h3>
 
             <p>
-              GBK AI translates and corrects your sentence.
+              GBK AI automatically detects
+              the language and learning language.
             </p>
 
             {answer ? (
               <div className="coachResult">
 
-                <strong>You said</strong>
+                <strong>
+                  You said
+                </strong>
+
                 <p>
-                  {answer.original || heard}
+                  {answer.original ||
+                    heard}
                 </p>
+
+                {(answer.sourceLanguage ||
+                  detectedLanguage) && (
+                  <>
+                    <strong>
+                      🌐 Detected language
+                    </strong>
+
+                    <p>
+                      {answer.sourceLanguage ||
+                        detectedLanguage}
+                    </p>
+                  </>
+                )}
+
+                {(answer.targetLanguage &&
+                  answer.targetLanguage !==
+                    "auto") ||
+                  learningLanguage ? (
+                  <>
+                    <strong>
+                      🎯 Learning language
+                    </strong>
+
+                    <p>
+                      {answer.targetLanguage &&
+                      answer.targetLanguage !==
+                        "auto"
+                        ? answer.targetLanguage
+                        : learningLanguage}
+                    </p>
+                  </>
+                ) : null}
 
                 {answer.translation && (
                   <>
-                    <strong>🌐 Translation</strong>
+                    <strong>
+                      🌐 Translation
+                    </strong>
+
                     <p>
                       {answer.translation}
                     </p>
@@ -363,7 +589,10 @@ export default function VoiceCoach() {
 
                 {answer.explanation && (
                   <>
-                    <strong>Why</strong>
+                    <strong>
+                      Why
+                    </strong>
+
                     <p>
                       {answer.explanation}
                     </p>
@@ -373,7 +602,9 @@ export default function VoiceCoach() {
               </div>
             ) : (
               <div className="coachResult">
-                Your translation and GBK AI
+                Your detected language,
+                learning language,
+                translation and GBK AI
                 correction will appear here.
               </div>
             )}
@@ -387,8 +618,8 @@ export default function VoiceCoach() {
             <h3>🔊 Repeat</h3>
 
             <p>
-              Listen and repeat the translated or
-              corrected sentence.
+              Listen and repeat the translated
+              or corrected sentence.
             </p>
 
             <button
@@ -405,7 +636,9 @@ export default function VoiceCoach() {
           <div className="stepNumber">5</div>
 
           <div className="stepContent">
-            <h3>🔄 Practice Again / Improve</h3>
+            <h3>
+              🔄 Practice Again / Improve
+            </h3>
 
             <p>
               Try again with a new sentence.
