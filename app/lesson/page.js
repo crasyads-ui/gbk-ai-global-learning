@@ -1,1 +1,4 @@
-"use client";import {useSearchParams} from "next/navigation";import VoiceCoach from "../components/VoiceCoach";export default function Lesson(){const q=useSearchParams();const path=q.get("path")||"Spoken English";return <main className="page"><section className="top"><span className="badge">LESSON</span><h1>{path}</h1><p>Learn one useful idea, hear it, say it, then use it in a real situation.</p></section><section className="card"><div className="steps"><span className="active">1 Learn</span><span>2 Listen</span><span>3 Speak</span><span>4 Correct</span><span>5 Repeat</span></div><div className="lessonbox"><h2>Today's practical lesson</h2><p>Tell GBK AI what you want to do. The coach will turn your question into a simple practice activity.</p></div></section><VoiceCoach path={path} targetLanguage="English"/></main>}
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  setPath(params.get("path") || "Spoken English");
+}, []);
