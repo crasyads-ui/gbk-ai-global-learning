@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
-const DEFAULT_TARGET = "English";
+const DEFAULT_LANGUAGE = "English";
 
-const SUPPORTED_LANGUAGES = [
+const LANGUAGES = [
   "English",
   "తెలుగు",
   "हिन्दी",
@@ -30,62 +30,55 @@ const SUPPORTED_LANGUAGES = [
   "中文",
 ];
 
-function normalizeLanguage(value, fallback = DEFAULT_TARGET) {
-  const language = String(value || "").trim();
+function normalizeLanguage(value, fallback = DEFAULT_LANGUAGE) {
+  const valueText = String(value || "").trim();
 
-  if (SUPPORTED_LANGUAGES.includes(language)) {
-    return language;
-  }
-
-  return fallback;
+  return LANGUAGES.includes(valueText)
+    ? valueText
+    : fallback;
 }
 
-function fallbackResponse(text, sourceLanguage, targetLanguage) {
-  const sentence = String(text || "").trim();
-
+function localFallback(text, sourceLanguage, targetLanguage) {
   return {
     ok: true,
     mode: "practice",
     sourceLanguage,
     targetLanguage,
     reply:
-      `I understood your message. Let's learn ${targetLanguage} step by step.`,
-    translation: sentence,
+      `GBK AI understood you. You are learning ${targetLanguage}.`,
+    translation: "",
     corrected: "",
     explanation:
-      `Your language is ${sourceLanguage}. You are learning ${targetLanguage}. Ask GBK AI for a sentence, translation, pronunciation practice, or correction.`,
+      `Your language: ${sourceLanguage}. Learning language: ${targetLanguage}.`,
+    pronunciation: "",
   };
 }
 
-function extractJSON(content) {
+function parseAIJSON(content) {
   if (!content) return null;
 
   if (typeof content === "object") {
     return content;
   }
 
-  const text = String(content).trim();
+  let text = String(content).trim();
 
-  try {
-    return JSON.parse(text);
-  } catch {}
-
-  const fenced = text
+  text = text
     .replace(/^```json\s*/i, "")
     .replace(/^```\s*/i, "")
     .replace(/\s*```$/i, "")
     .trim();
 
   try {
-    return JSON.parse(fenced);
+    return JSON.parse(text);
   } catch {}
 
-  const first = fenced.indexOf("{");
-  const last = fenced.lastIndexOf("}");
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
 
-  if (first >= 0 && last > first) {
+  if (start !== -1 && end > start) {
     try {
-      return JSON.parse(fenced.slice(first, last + 1));
+      return JSON.parse(text.slice(start, end + 1));
     } catch {}
   }
 
@@ -98,7 +91,7 @@ export async function GET() {
     service: "GBK AI Global Learning Tutor",
     version: "13.0.0",
     multilingual: true,
-    supportedLanguages: SUPPORTED_LANGUAGES.length,
+    languages: LANGUAGES,
   });
 }
 
@@ -107,14 +100,16 @@ export async function POST(request) {
     const body = await request.json();
 
     const text = String(
-      body?.text ?? body?.message ?? ""
+      body?.text ??
+      body?.message ??
+      ""
     ).trim();
 
     if (!text) {
       return NextResponse.json(
         {
           ok: false,
-          error: "Text is required.",
+          error: "Please speak or type something first.",
         },
         { status: 400 }
       );
@@ -122,15 +117,16 @@ export async function POST(request) {
 
     const sourceLanguage = normalizeLanguage(
       body?.language,
-      "English"
+      DEFAULT_LANGUAGE
     );
 
     const targetLanguage = normalizeLanguage(
       body?.targetLanguage,
-      DEFAULT_TARGET
+      DEFAULT_LANGUAGE
     );
 
     const apiKey = process.env.AI_PROVIDER_API_KEY;
+
     const providerUrl =
       process.env.AI_PROVIDER_URL ||
       "https://api.openai.com/v1/chat/completions";
@@ -141,7 +137,7 @@ export async function POST(request) {
 
     if (!apiKey) {
       return NextResponse.json(
-        fallbackResponse(
+        localFallback(
           text,
           sourceLanguage,
           targetLanguage
@@ -150,52 +146,94 @@ export async function POST(request) {
     }
 
     const systemPrompt = `
-You are GBK AI Global Learning, a multilingual AI tutor.
+You are GBK AI Global Learning.
 
-The learner's source/own language is:
+You are a multilingual language-learning coach.
+
+SOURCE / OWN LANGUAGE:
 ${sourceLanguage}
 
-The learner's selected target language is:
+TARGET / LEARNING LANGUAGE:
 ${targetLanguage}
 
-IMPORTANT:
-- NEVER assume English is the target language.
-- ALWAYS teach the selected target language.
-- ${targetLanguage} is the authoritative learning language.
-- Explain corrections and teaching points in the learner's source language: ${sourceLanguage}.
-- The actual sentence being learned must be written in ${targetLanguage}.
-- If the learner asks to learn a language, immediately provide a useful beginner sentence in the selected target language.
-- If the learner provides a sentence in their own language, translate its meaning into ${targetLanguage}.
-- If the learner provides a sentence already written in ${targetLanguage}, check grammar, naturalness, word choice and sentence structure.
-- Give a short, practical explanation.
-- Include pronunciation guidance when useful.
-- Keep the response beginner-friendly.
-- Do not unnecessarily translate the explanation into English.
-- Do not change the selected target language.
+The target language is selected by the learner and is AUTHORITATIVE.
 
-Example:
-Source language: Hindi
-Target language: Thai
+NEVER automatically change the target language to English.
+
+Your job:
+
+1. Understand what the learner said.
+2. Detect the meaning and learning intention.
+3. Teach the learner in ${targetLanguage}.
+4. Explain the lesson and corrections in ${sourceLanguage}.
+5. Give a natural sentence in ${targetLanguage}.
+6. If the learner already attempted ${targetLanguage}, correct grammar,
+   vocabulary, sentence structure and naturalness.
+7. Give simple pronunciation guidance when useful.
+8. Keep explanations short and beginner-friendly.
+9. Encourage the learner to repeat the target sentence.
+10. The final learning sentence must be in ${targetLanguage}.
+
+IMPORTANT MULTILINGUAL EXAMPLE:
+
+Source:
+Hindi
+
+Target:
+Thai
 
 User:
 "मुझे थाई भाषा में बातचीत करना सिखाओ।"
 
-Return a useful Thai beginner sentence, explain it in Hindi, and provide pronunciation help.
+Your response should teach a useful Thai conversation sentence,
+while explaining it in Hindi.
 
-Return ONLY valid JSON with exactly these fields:
+ANOTHER EXAMPLE:
+
+Source:
+Telugu
+
+Target:
+Japanese
+
+User:
+"నాకు జపనీస్ నేర్చుకోవాలి."
+
+Provide:
+- Japanese learning sentence
+- explanation in Telugu
+- Japanese pronunciation guidance
+- correction if necessary
+
+ANOTHER EXAMPLE:
+
+Source:
+Japanese
+
+Target:
+Thai
+
+Provide Thai learning material and explain it in Japanese.
+
+Return ONLY valid JSON:
 
 {
-  "reply": "short helpful response in the source language",
-  "translation": "target-language sentence",
-  "corrected": "best/correct target-language sentence",
-  "explanation": "short explanation in the source language",
-  "pronunciation": "simple pronunciation guidance when useful",
+  "reply": "short helpful explanation in ${sourceLanguage}",
+  "translation": "useful sentence in ${targetLanguage}",
+  "corrected": "best natural sentence in ${targetLanguage}",
+  "explanation": "why/how to use it explained in ${sourceLanguage}",
+  "pronunciation": "simple pronunciation guidance for ${targetLanguage}",
   "sourceLanguage": "${sourceLanguage}",
   "targetLanguage": "${targetLanguage}"
 }
+
+Do not return Markdown.
+Do not return code fences.
+Do not return English explanations unless English is the source language.
+Do not change ${targetLanguage} to another language.
 `;
 
-    const providerResponse = await fetch(providerUrl, {
+    const aiResponse = await fetch(providerUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -220,15 +258,17 @@ Return ONLY valid JSON with exactly these fields:
       }),
     });
 
-    if (!providerResponse.ok) {
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+
       console.error(
-        "AI provider error:",
-        providerResponse.status,
-        await providerResponse.text()
+        "GBK AI provider error:",
+        aiResponse.status,
+        errorText
       );
 
       return NextResponse.json(
-        fallbackResponse(
+        localFallback(
           text,
           sourceLanguage,
           targetLanguage
@@ -236,17 +276,21 @@ Return ONLY valid JSON with exactly these fields:
       );
     }
 
-    const providerData = await providerResponse.json();
+    const providerData = await aiResponse.json();
 
     const content =
-      providerData?.choices?.[0]?.message?.content ||
-      "";
+      providerData?.choices?.[0]?.message?.content || "";
 
-    const parsed = extractJSON(content);
+    const parsed = parseAIJSON(content);
 
     if (!parsed) {
+      console.error(
+        "GBK AI returned invalid JSON:",
+        content
+      );
+
       return NextResponse.json(
-        fallbackResponse(
+        localFallback(
           text,
           sourceLanguage,
           targetLanguage
@@ -254,47 +298,46 @@ Return ONLY valid JSON with exactly these fields:
       );
     }
 
-    const result = {
+    return NextResponse.json({
       ok: true,
       mode: "ai",
-      sourceLanguage:
-        parsed.sourceLanguage || sourceLanguage,
-      targetLanguage:
-        parsed.targetLanguage || targetLanguage,
+
+      sourceLanguage,
+
+      // IMPORTANT:
+      // Always preserve the learner's selected target.
+      targetLanguage,
+
       reply:
         parsed.reply ||
         `Let's learn ${targetLanguage} step by step.`,
+
       translation:
         parsed.translation || "",
+
       corrected:
         parsed.corrected || "",
+
       explanation:
         parsed.explanation ||
-        `This explanation is provided in ${sourceLanguage}.`,
+        `This lesson is explained in ${sourceLanguage}.`,
+
       pronunciation:
         parsed.pronunciation || "",
-    };
-
-    /*
-     * Safety check:
-     * The frontend must never accidentally switch the
-     * selected learning language because the AI returned
-     * something else.
-     */
-    result.targetLanguage = targetLanguage;
-
-    return NextResponse.json(result);
-  } catch (error) {
-    console.error("GBK AI tutor error:", error);
-
-    return NextResponse.json({
-      ...fallbackResponse(
-        "",
-        "English",
-        DEFAULT_TARGET
-      ),
-      ok: true,
-      mode: "practice",
     });
+
+  } catch (error) {
+    console.error(
+      "GBK AI tutor route error:",
+      error
+    );
+
+    return NextResponse.json(
+      localFallback(
+        "",
+        DEFAULT_LANGUAGE,
+        DEFAULT_LANGUAGE
+      )
+    );
   }
 }
