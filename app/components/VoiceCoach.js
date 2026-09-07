@@ -19,7 +19,6 @@ export default function VoiceCoach() {
     };
 
     syncLanguage();
-
     window.addEventListener("gbk-language-change", syncLanguage);
 
     return () => {
@@ -59,7 +58,7 @@ export default function VoiceCoach() {
         body: JSON.stringify({
           text: value,
           language,
-          targetLanguage: "English",
+          targetLanguage: language === "English" ? "Telugu" : "English",
         }),
       });
 
@@ -84,15 +83,19 @@ export default function VoiceCoach() {
         "";
 
       if (voiceText) {
-        speak(voiceText, data.targetLanguage || "English");
+        speak(
+          voiceText,
+          data.targetLanguage || "English"
+        );
       }
     } catch (error) {
       console.error("GBK AI tutor error:", error);
 
       setAnswer({
         original: value,
-        reply: "I could not process that right now. Please try again.",
+        translation: "",
         corrected: "",
+        reply: "I could not process that right now. Please try again.",
         explanation: "The GBK AI connection could not be completed.",
       });
 
@@ -110,7 +113,9 @@ export default function VoiceCoach() {
       window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      setStatus("Voice recognition is not supported. Please use Chrome.");
+      setStatus(
+        "Voice recognition is not supported. Please use Chrome."
+      );
       return;
     }
 
@@ -142,7 +147,11 @@ export default function VoiceCoach() {
     };
 
     recognition.onerror = (event) => {
-      console.error("Speech recognition error:", event.error);
+      console.error(
+        "Speech recognition error:",
+        event.error
+      );
+
       setListening(false);
       setStatus("Voice input stopped. Please try again.");
     };
@@ -171,10 +180,13 @@ export default function VoiceCoach() {
       answer?.translation ||
       answer?.corrected ||
       answer?.reply ||
-      heard ||
-      "I want to learn English.";
+      heard;
 
-    speak(sentence, answer?.targetLanguage || "English");
+    const speakLanguage =
+      answer?.targetLanguage ||
+      (language === "English" ? "Telugu" : "English");
+
+    speak(sentence, speakLanguage);
   }
 
   function repeatCorrection() {
@@ -184,14 +196,21 @@ export default function VoiceCoach() {
       answer?.reply ||
       heard;
 
-    speak(sentence, answer?.targetLanguage || "English");
+    const speakLanguage =
+      answer?.targetLanguage ||
+      (language === "English" ? "Telugu" : "English");
+
+    speak(sentence, speakLanguage);
   }
 
   function practiceAgain() {
     setHeard("");
     setAnswer(null);
     setStatus("");
-    window.speechSynthesis?.cancel();
+
+    if (typeof window !== "undefined") {
+      window.speechSynthesis?.cancel();
+    }
   }
 
   useEffect(() => {
@@ -211,7 +230,8 @@ export default function VoiceCoach() {
           <h2>Talk to GBK AI</h2>
 
           <p>
-            Listen, speak, get corrected, repeat and improve.
+            Listen, speak, get corrected, translate,
+            repeat and improve.
           </p>
         </div>
 
@@ -223,7 +243,11 @@ export default function VoiceCoach() {
       <textarea
         value={heard}
         onChange={(event) => setHeard(event.target.value)}
-        placeholder="Speak or type in English…"
+        placeholder={
+          language === "English"
+            ? "Speak or type in English…"
+            : `Speak or type in ${language}…`
+        }
         rows={3}
       />
 
@@ -267,12 +291,13 @@ export default function VoiceCoach() {
             <h3>🎧 Listen</h3>
 
             <p>
-              Listen to the sentence from GBK AI.
+              Listen to the translated or corrected sentence.
             </p>
 
             <button
               className="btn"
               onClick={listenToSentence}
+              disabled={!answer}
             >
               🔊 Listen
             </button>
@@ -306,36 +331,50 @@ export default function VoiceCoach() {
             <h3>✨ GBK AI Correction</h3>
 
             <p>
-              Get instant feedback and a corrected answer.
+              GBK AI translates and corrects your sentence.
             </p>
 
             {answer ? (
-              <>
-                <div className="coachResult">
-                  <strong>You said</strong>
-                  <p>{answer.original || heard}</p>
+              <div className="coachResult">
 
-                  <strong>
-                    GBK AI correction / answer
-                  </strong>
+                <strong>You said</strong>
+                <p>
+                  {answer.original || heard}
+                </p>
 
-                  <p>
-                    {answer.corrected ||
-                      answer.reply ||
-                      "No correction needed."}
-                  </p>
+                {answer.translation && (
+                  <>
+                    <strong>🌐 Translation</strong>
+                    <p>
+                      {answer.translation}
+                    </p>
+                  </>
+                )}
 
-                  {answer.explanation && (
-                    <>
-                      <strong>Why</strong>
-                      <p>{answer.explanation}</p>
-                    </>
-                  )}
-                </div>
-              </>
+                <strong>
+                  ✨ GBK AI correction / answer
+                </strong>
+
+                <p>
+                  {answer.corrected ||
+                    answer.reply ||
+                    "No correction needed."}
+                </p>
+
+                {answer.explanation && (
+                  <>
+                    <strong>Why</strong>
+                    <p>
+                      {answer.explanation}
+                    </p>
+                  </>
+                )}
+
+              </div>
             ) : (
               <div className="coachResult">
-                Your answer and GBK AI correction will appear here.
+                Your translation and GBK AI
+                correction will appear here.
               </div>
             )}
           </div>
@@ -348,7 +387,8 @@ export default function VoiceCoach() {
             <h3>🔊 Repeat</h3>
 
             <p>
-              Listen and repeat the corrected sentence.
+              Listen and repeat the translated or
+              corrected sentence.
             </p>
 
             <button
@@ -368,7 +408,7 @@ export default function VoiceCoach() {
             <h3>🔄 Practice Again / Improve</h3>
 
             <p>
-              Try again with a new sentence or the same one.
+              Try again with a new sentence.
             </p>
 
             <button
