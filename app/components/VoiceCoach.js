@@ -128,6 +128,7 @@ export default function VoiceCoach() {
   const [learningLanguage, setLearningLanguage] = useState("English");
 
   const [listening, setListening] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const [heard, setHeard] = useState("");
@@ -190,7 +191,9 @@ export default function VoiceCoach() {
       utterance.lang = getVoiceLanguage(speakLanguage);
       utterance.rate = 0.9;
       utterance.pitch = 1;
-
+setSpeaking(true);
+utterance.onend = () => setSpeaking(false);
+utterance.onerror = () => setSpeaking(false);
       window.speechSynthesis.speak(utterance);
     } catch {
       setStatus("Voice output could not start.");
@@ -355,7 +358,7 @@ export default function VoiceCoach() {
   if (typeof window !== "undefined" && window.speechSynthesis) {
     window.speechSynthesis.cancel();
   }
-
+setSpeaking(false);
   // Stop microphone
   if (recognitionRef.current) {
     try {
@@ -477,7 +480,9 @@ export default function VoiceCoach() {
         <button
           className="btn"
           onClick={stopListening}
-          disabled={!listening}
+          
+disabled={!listening && !speaking}
+            
         >
           ⏹ Stop
         </button>
