@@ -1,280 +1,199 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { langCodes } from "../lib/languages";
 
 const LANGUAGES = [
-  "English",
-  "తెలుగు",
-  "हिन्दी",
-  "मराठी",
-  "বাংলা",
-  "தமிழ்",
-  "ಕನ್ನಡ",
-  "മലയാളം",
-  "ગુજરાતી",
-  "ਪੰਜਾਬੀ",
-  "اردو",
-  "Español",
-  "Français",
-  "Deutsch",
-  "Português",
-  "Italiano",
-  "العربية",
-  "Türkçe",
-  "Русский",
-  "Bahasa Indonesia",
-  "Tiếng Việt",
-  "ไทย",
-  "日本語",
-  "한국어",
-  "中文",
+  "English", "Telugu", "Hindi", "Marathi", "Bengali", "Tamil", "Kannada",
+  "Malayalam", "Gujarati", "Punjabi", "Urdu", "Spanish", "French", "German",
+  "Portuguese", "Italian", "Arabic", "Turkish", "Russian", "Indonesian",
+  "Vietnamese", "Thai", "Japanese", "Korean", "Chinese"
 ];
 
-const LANGUAGE_PATTERNS = [
-  ["తెలుగు", /[\u0C00-\u0C7F]/],
-  ["हिन्दी", /[\u0900-\u097F]/],
-  ["मराठी", /[\u0900-\u097F]/],
-  ["বাংলা", /[\u0980-\u09FF]/],
-  ["தமிழ்", /[\u0B80-\u0BFF]/],
-  ["ಕನ್ನಡ", /[\u0C80-\u0CFF]/],
-  ["മലയാളം", /[\u0D00-\u0D7F]/],
-  ["ગુજરાતી", /[\u0A80-\u0AFF]/],
-  ["ਪੰਜਾਬੀ", /[\u0A00-\u0A7F]/],
-  ["اردو", /[\u0600-\u06FF]/],
-  ["العربية", /[\u0600-\u06FF]/],
-  ["ไทย", /[\u0E00-\u0E7F]/],
-  ["日本語", /[\u3040-\u30FF]/],
-  ["한국어", /[\uAC00-\uD7AF]/],
-  ["中文", /[\u4E00-\u9FFF]/],
-  ["Русский", /[\u0400-\u04FF]/],
-];
-
-const TARGET_ALIASES = {
-  english: "English",
-  telugu: "తెలుగు",
-  hindi: "हिन्दी",
-  marathi: "मराठी",
-  bengali: "বাংলা",
-  bangla: "বাংলা",
-  tamil: "தமிழ்",
-  kannada: "ಕನ್ನಡ",
-  malayalam: "മലയാളം",
-  gujarati: "ગુજરાતી",
-  punjabi: "ਪੰਜਾਬੀ",
-  urdu: "اردو",
-  spanish: "Español",
-  french: "Français",
-  german: "Deutsch",
-  portuguese: "Português",
-  italian: "Italiano",
-  arabic: "العربية",
-  turkish: "Türkçe",
-  russian: "Русский",
-  indonesian: "Bahasa Indonesia",
-  vietnamese: "Tiếng Việt",
-  thai: "ไทย",
-  japanese: "日本語",
-  korean: "한국어",
-  chinese: "中文",
-  mandarin: "中文",
+const LANG_CODES = {
+  English: "en-US",
+  Telugu: "te-IN",
+  Hindi: "hi-IN",
+  Marathi: "mr-IN",
+  Bengali: "bn-IN",
+  Tamil: "ta-IN",
+  Kannada: "kn-IN",
+  Malayalam: "ml-IN",
+  Gujarati: "gu-IN",
+  Punjabi: "pa-IN",
+  Urdu: "ur-PK",
+  Spanish: "es-ES",
+  French: "fr-FR",
+  German: "de-DE",
+  Portuguese: "pt-PT",
+  Italian: "it-IT",
+  Arabic: "ar-SA",
+  Turkish: "tr-TR",
+  Russian: "ru-RU",
+  Indonesian: "id-ID",
+  Vietnamese: "vi-VN",
+  Thai: "th-TH",
+  Japanese: "ja-JP",
+  Korean: "ko-KR",
+  Chinese: "zh-CN"
 };
 
-function detectLanguage(text, fallback = "English") {
-  const value = String(text || "").trim();
-
-  for (const [language, pattern] of LANGUAGE_PATTERNS) {
-    if (pattern.test(value)) return language;
-  }
-
-  return fallback;
-}
-
-function detectRequestedLanguage(text) {
-  const value = String(text || "").toLowerCase();
-
-  for (const [alias, language] of Object.entries(TARGET_ALIASES)) {
-    const patterns = [
-      `in ${alias}`,
-      `into ${alias}`,
-      `to ${alias}`,
-      `learn ${alias}`,
-      `speak ${alias}`,
-      `practice ${alias}`,
-      `teach me ${alias}`,
-      `teach ${alias}`,
-      `conversation in ${alias}`,
-    ];
-
-    if (patterns.some((pattern) => value.includes(pattern))) {
-      return language;
-    }
-  }
-
-  return "";
-}
-
-function getVoiceLanguage(language) {
-  return langCodes?.[language] || "en-US";
-}
-
-export default function VoiceCoach() {
+export default function VoiceCoach({
+  path = "Learning Paths",
+  level = "Beginner",
+  lesson = "",
+  targetLanguage = "English"
+}) {
   const recognitionRef = useRef(null);
 
-  const [language, setLanguage] = useState("English");
-  const [targetLanguage, setTargetLanguage] = useState("English");
-
-  const [detectedLanguage, setDetectedLanguage] = useState("");
-  const [learningLanguage, setLearningLanguage] = useState("English");
+  const [myLanguage, setMyLanguage] = useState("English");
+  const [selectedTarget, setSelectedTarget] = useState(targetLanguage || "English");
 
   const [listening, setListening] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const [heard, setHeard] = useState("");
-  const [answer, setAnswer] = useState(null);
   const [status, setStatus] = useState("Ready");
+  const [heard, setHeard] = useState("");
+  const [reply, setReply] = useState("");
+  const [translation, setTranslation] = useState("");
+  const [corrected, setCorrected] = useState("");
+  const [explanation, setExplanation] = useState("");
+  const [pronunciation, setPronunciation] = useState("");
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    try {
+      const savedMy = localStorage.getItem("gbk_my_language");
+      const savedTarget = localStorage.getItem("gbk_target_language");
 
-    const savedLanguage =
-      localStorage.getItem("gbk_language") || "English";
-
-    const savedTarget =
-      localStorage.getItem("gbk_target_language") || "English";
-
-    setLanguage(savedLanguage);
-    setTargetLanguage(
-      LANGUAGES.includes(savedTarget) ? savedTarget : "English"
-    );
-
-    const syncLanguage = () => {
-      setLanguage(localStorage.getItem("gbk_language") || "English");
-    };
-
-    window.addEventListener("gbk-language-change", syncLanguage);
-
-    return () => {
-      window.removeEventListener("gbk-language-change", syncLanguage);
-
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch {}
-      }
-    };
+      if (savedMy) setMyLanguage(savedMy);
+      if (savedTarget) setSelectedTarget(savedTarget);
+    } catch {}
   }, []);
 
-  function changeTargetLanguage(value) {
-    setTargetLanguage(value);
-    setLearningLanguage(value);
+  useEffect(() => {
+    try {
+      localStorage.setItem("gbk_my_language", myLanguage);
+      localStorage.setItem("gbk_target_language", selectedTarget);
+    } catch {}
+  }, [myLanguage, selectedTarget]);
 
-    if (typeof window !== "undefined") {
-      localStorage.setItem("gbk_target_language", value);
+  // Automatically explain the selected lesson aloud.
+  useEffect(() => {
+    if (!lesson) return;
+
+    let cancelled = false;
+
+    async function loadLesson() {
+      setBusy(true);
+      setStatus("GBK AI is preparing the lesson...");
+      setReply("");
+      setTranslation("");
+      setCorrected("");
+      setExplanation("");
+      setPronunciation("");
+
+      try {
+        const response = await fetch("/api/tutor", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            text: `Teach me this lesson: ${lesson}`,
+            language: myLanguage,
+            targetLanguage: selectedTarget,
+            path,
+            level,
+            lesson
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data?.error || "AI request failed");
+        }
+
+        if (cancelled) return;
+
+        const aiReply = data.reply || data.translation || "";
+
+        setReply(aiReply);
+        setTranslation(data.translation || "");
+        setCorrected(data.corrected || "");
+        setExplanation(data.explanation || "");
+        setPronunciation(data.pronunciation || "");
+        setStatus("Lesson ready");
+
+        // Automatically speak the lesson explanation.
+        const textToSpeak =
+          data.explanation ||
+          data.reply ||
+          data.translation ||
+          lesson;
+
+        if (textToSpeak) {
+          speak(textToSpeak, selectedTarget);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setStatus(error.message || "Unable to load lesson");
+        }
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
     }
+
+    loadLesson();
+
+    return () => {
+      cancelled = true;
+      stopVoice();
+    };
+  }, [lesson, path, level, selectedTarget]);
+
+  function speak(text, language) {
+    if (!text || typeof window === "undefined") return;
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = LANG_CODES[language] || "en-US";
+    utterance.rate = 0.9;
+
+    utterance.onstart = () => {
+      setSpeaking(true);
+      setStatus("GBK AI is speaking...");
+    };
+
+    utterance.onend = () => {
+      setSpeaking(false);
+      setStatus("Ready to practice");
+    };
+
+    utterance.onerror = () => {
+      setSpeaking(false);
+      setStatus("Voice stopped");
+    };
+
+    window.speechSynthesis.speak(utterance);
   }
 
-  function speak(text, speakLanguage) {
-    if (typeof window === "undefined") return;
-    if (!text) return;
-
-    if (!window.speechSynthesis) {
-      setStatus("Voice output is not supported in this browser.");
-      return;
-    }
-
-    try {
+  // IMPORTANT: this stops GBK AI audio immediately.
+  function stopVoice() {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = getVoiceLanguage(speakLanguage);
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
-
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      setStatus("Voice output could not start.");
-    }
-  }
-
-  async function askGBK(value) {
-    const text = String(value || "").trim();
-
-    if (!text) {
-      setStatus("Speak or type something first.");
-      return;
     }
 
-    setBusy(true);
-    setStatus("GBK AI is listening and preparing your lesson...");
-
-    const source = detectLanguage(text, language);
-
-    const requestedTarget = detectRequestedLanguage(text);
-    const selectedTarget = requestedTarget || targetLanguage || "English";
-
-    setDetectedLanguage(source);
-    setLearningLanguage(selectedTarget);
-
-    try {
-      const response = await fetch("/api/tutor", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text,
-          language: source,
-          targetLanguage: selectedTarget,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.error || "AI request failed");
-      }
-
-      const result = {
-        ...data,
-        sourceLanguage: data?.sourceLanguage || source,
-        targetLanguage: data?.targetLanguage || selectedTarget,
-      };
-
-      setAnswer(result);
-      setStatus("Ready");
-
-      const finalText =
-        result.corrected ||
-        result.translation ||
-        result.reply ||
-        result.answer ||
-        "";
-
-      if (finalText) {
-        speak(
-          finalText,
-          result.targetLanguage || selectedTarget
-        );
-      }
-    } catch (error) {
-      console.error(error);
-
-      setAnswer({
-        sourceLanguage: source,
-        targetLanguage: selectedTarget,
-        reply:
-          "GBK AI practice mode is ready. Please try your sentence again.",
-        corrected: "",
-        translation: "",
-        explanation:
-          `Detected language: ${source}. Learning language: ${selectedTarget}.`,
-      });
-
-      setStatus("Practice mode");
-    } finally {
-      setBusy(false);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
     }
+
+    setSpeaking(false);
+    setListening(false);
+    setStatus("Stopped");
   }
 
   function startListening() {
@@ -285,55 +204,36 @@ export default function VoiceCoach() {
       window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      setStatus(
-        "Voice recognition is not supported in this browser. You can type instead."
-      );
+      setStatus("Microphone speech recognition is not supported");
       return;
     }
 
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch {}
+    // Stop any GBK AI speech before microphone practice.
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
     }
 
     const recognition = new SpeechRecognition();
 
-    recognition.lang = getVoiceLanguage(language);
+    recognition.lang = LANG_CODES[myLanguage] || "en-US";
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
       setListening(true);
-      setStatus(`Listening in ${language}...`);
+      setSpeaking(false);
+      setStatus("Listening...");
     };
 
     recognition.onresult = (event) => {
-      const text =
-        event?.results?.[0]?.[0]?.transcript?.trim() || "";
-
-      if (!text) {
-        setStatus("I didn't hear a sentence. Please try again.");
-        return;
-      }
-
+      const text = event.results?.[0]?.[0]?.transcript || "";
       setHeard(text);
-      setListening(false);
-
-      askGBK(text);
+      setStatus("Speech captured");
     };
 
     recognition.onerror = (event) => {
-      console.error("Speech recognition error:", event);
-
       setListening(false);
-
-      if (event?.error === "not-allowed") {
-        setStatus("Microphone permission is required.");
-      } else {
-        setStatus("Voice recognition stopped. Please try again.");
-      }
+      setStatus(event.error || "Microphone error");
     };
 
     recognition.onend = () => {
@@ -346,253 +246,190 @@ export default function VoiceCoach() {
       recognition.start();
     } catch {
       setListening(false);
-      setStatus("Could not start the microphone.");
     }
   }
 
-  function stopListening() {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch {}
-    }
-
-    setListening(false);
-    setStatus("Stopped");
-  }
-
-  function getLearningSentence() {
-    if (!answer) return "";
-
-    return (
-      answer.corrected ||
-      answer.translation ||
-      answer.reply ||
-      ""
-    );
-  }
-
-  function listenToSentence() {
-    const sentence = getLearningSentence();
-
-    if (!sentence) {
-      setStatus("Ask GBK AI first.");
+  async function askGBK() {
+    if (!heard.trim()) {
+      setStatus("Speak something first");
       return;
     }
 
-    speak(
-      sentence,
-      answer?.targetLanguage || learningLanguage
-    );
-  }
+    setBusy(true);
+    setStatus("GBK AI is checking your speech...");
 
-  function repeatCorrection() {
-    const sentence = getLearningSentence();
+    try {
+      const response = await fetch("/api/tutor", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          text: heard,
+          language: myLanguage,
+          targetLanguage: selectedTarget,
+          path,
+          level,
+          lesson
+        })
+      });
 
-    if (!sentence) {
-      setStatus("There is no correction to repeat yet.");
-      return;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "AI request failed");
+      }
+
+      setReply(data.reply || "");
+      setTranslation(data.translation || "");
+      setCorrected(data.corrected || "");
+      setExplanation(data.explanation || "");
+      setPronunciation(data.pronunciation || "");
+      setStatus("Correction ready");
+
+      const speakText =
+        data.corrected ||
+        data.reply ||
+        data.translation;
+
+      if (speakText) {
+        speak(speakText, selectedTarget);
+      }
+    } catch (error) {
+      setStatus(error.message || "AI error");
+    } finally {
+      setBusy(false);
     }
-
-    speak(
-      sentence,
-      answer?.targetLanguage || learningLanguage
-    );
   }
 
-  function practiceAgain() {
-    setHeard("");
-    setAnswer(null);
-    setStatus("Ready for another practice sentence.");
-  }
+  const stopDisabled = !listening && !speaking && !busy;
 
   return (
-    <section className="voiceCoach">
-      <div className="voiceCoachHeader">
+    <section className="voice-coach">
+      <div className="coach-header">
         <div>
-          <span className="badge">🎙️ Voice Coach</span>
-          <h2>Talk to GBK AI</h2>
+          <h2>🎙️ GBK AI Voice Coach</h2>
           <p>
-            Listen, speak, get corrected, repeat and improve.
+            {path} · {level}
+            {lesson ? ` · ${lesson}` : ""}
           </p>
         </div>
       </div>
 
-      <div className="actions">
-        <div>
-          <strong>🗣️ My language</strong>
-          <div>{language}</div>
-        </div>
+      <div className="language-grid">
+        <label>
+          🌐 My Language
+          <select
+            value={myLanguage}
+            onChange={(e) => setMyLanguage(e.target.value)}
+          >
+            {LANGUAGES.map((lang) => (
+              <option key={lang}>{lang}</option>
+            ))}
+          </select>
+        </label>
 
         <label>
-          <strong>🎯 I want to learn</strong>
+          🎯 I want to learn
           <select
-            className="btn"
-            value={targetLanguage}
-            onChange={(event) =>
-              changeTargetLanguage(event.target.value)
-            }
-            aria-label="I want to learn"
+            value={selectedTarget}
+            onChange={(e) => setSelectedTarget(e.target.value)}
           >
-            {LANGUAGES.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
+            {LANGUAGES.map((lang) => (
+              <option key={lang}>{lang}</option>
             ))}
           </select>
         </label>
       </div>
 
-      <textarea
-        className="voiceCoachInput"
-        value={heard}
-        onChange={(event) => setHeard(event.target.value)}
-        placeholder={`Speak or type in ${language}...`}
-        rows={4}
-      />
-
-      <div className="actions">
+      <div className="coach-controls">
         <button
-          className="btn primary"
+          className="btn"
           onClick={startListening}
-          disabled={busy || listening}
+          disabled={listening || busy}
         >
           🎙️ Start
         </button>
 
         <button
           className="btn"
-          onClick={() => askGBK(heard)}
-          disabled={busy || !heard.trim()}
+          onClick={askGBK}
+          disabled={!heard.trim() || busy}
         >
           ✨ Ask GBK AI
         </button>
 
         <button
-          className="btn"
-          onClick={stopListening}
-          disabled={!listening}
+          className="btn stop"
+          onClick={stopVoice}
+          disabled={stopDisabled}
         >
-          ⏹ Stop
+          ⏹ Stop Voice
         </button>
       </div>
 
-      <div className="status">
-        {listening ? "🎙️ " : ""}
-        {status}
+      <div className="voice-status">
+        <strong>{status}</strong>
+        {speaking && <span> 🔊</span>}
+        {listening && <span> 🎙️</span>}
       </div>
 
       <div className="steps">
-        <div className="step">
-          <strong>1️⃣ 🎧 Listen</strong>
-          <p>Listen to the translated or corrected sentence.</p>
-          <button
-            className="btn"
-            onClick={listenToSentence}
-            disabled={!answer}
-          >
-            🔊 Listen
-          </button>
-        </div>
-
-        <div className="step">
-          <strong>2️⃣ 🎙️ Speak</strong>
-          <p>Speak the sentence clearly.</p>
-          <button
-            className="btn primary"
-            onClick={startListening}
-            disabled={busy || listening}
-          >
-            🎙️ Speak
-          </button>
-        </div>
-
-        <div className="step">
-          <strong>3️⃣ ✨ GBK AI Correction</strong>
-          <p>GBK AI translates, teaches and corrects your sentence.</p>
-
-          {heard && (
-            <div className="result">
-              <strong>You said</strong>
-              <p>{heard}</p>
-            </div>
-          )}
-
-          {answer && (
-            <>
-              <div className="result">
-                <strong>Detected language</strong>
-                <p>
-                  {answer.sourceLanguage || detectedLanguage}
-                </p>
-              </div>
-
-              <div className="result">
-                <strong>🎯 Learning language</strong>
-                <p>
-                  {answer.targetLanguage || learningLanguage}
-                </p>
-              </div>
-
-              {answer.translation && (
-                <div className="result">
-                  <strong>Translation</strong>
-                  <p>{answer.translation}</p>
-                </div>
-              )}
-
-              <div className="result">
-                <strong>✨ GBK AI correction / answer</strong>
-                <p>
-                  {answer.corrected ||
-                    answer.reply ||
-                    answer.answer}
-                </p>
-              </div>
-
-              {answer.explanation && (
-                <div className="result">
-                  <strong>💡 Why</strong>
-                  <p>{answer.explanation}</p>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        <div className="step">
-          <strong>4️⃣ 🔊 Repeat</strong>
-          <p>
-            Listen and repeat the corrected sentence.
-          </p>
-          <button
-            className="btn"
-            onClick={repeatCorrection}
-            disabled={!answer}
-          >
-            🔊 Repeat
-          </button>
-        </div>
-
-        <div className="step">
-          <strong>5️⃣ 🔄 Practice Again / Improve</strong>
-          <p>
-            Try again with another sentence and improve.
-          </p>
-          <button
-            className="btn"
-            onClick={practiceAgain}
-          >
-            🔄 Practice Again
-          </button>
-        </div>
+        <div>1. 🎧 Listen</div>
+        <div>2. 🎙️ Speak</div>
+        <div>3. ✨ GBK AI Correction</div>
+        <div>4. 🔊 Repeat</div>
+        <div>5. 🔄 Practice Again</div>
       </div>
 
-      <div className="voiceCoachTip">
-        💡 <strong>Tip:</strong> Choose the language you want to
-        learn. GBK AI will use your language for understanding and
-        explanations, then teach the selected target language.
-      </div>
+      {lesson && (
+        <div className="lesson-box">
+          <small>Current lesson</small>
+          <h3>{lesson}</h3>
+        </div>
+      )}
+
+      {heard && (
+        <div className="result-box">
+          <h3>🎙️ You said</h3>
+          <p>{heard}</p>
+        </div>
+      )}
+
+      {reply && (
+        <div className="result-box">
+          <h3>✨ GBK AI</h3>
+          <p>{reply}</p>
+        </div>
+      )}
+
+      {translation && (
+        <div className="result-box">
+          <h3>🌐 Translation</h3>
+          <p>{translation}</p>
+        </div>
+      )}
+
+      {corrected && (
+        <div className="result-box">
+          <h3>✅ Corrected</h3>
+          <p>{corrected}</p>
+        </div>
+      )}
+
+      {explanation && (
+        <div className="result-box">
+          <h3>💡 Why?</h3>
+          <p>{explanation}</p>
+        </div>
+      )}
+
+      {pronunciation && (
+        <div className="result-box">
+          <h3>🗣️ Pronunciation</h3>
+          <p>{pronunciation}</p>
+        </div>
+      )}
     </section>
   );
 }
